@@ -1,8 +1,11 @@
 mod mmu;
+mod registers;
+mod cpu;
 
 use std::io;
 use std::io::prelude::*;
 use std::fs::File;
+use crate::cpu::CPU;
 use crate::mmu::MMU;
 
 fn main() {
@@ -13,5 +16,8 @@ fn main() {
     let mut mmu = MMU::new();
     mmu.read_boot(boot);
 
-    println!("{:#X}", mmu.boot[1]);
+    let mut cpu = CPU::new();
+    loop {
+        cpu.step(&mut mmu);
+    }
 }
