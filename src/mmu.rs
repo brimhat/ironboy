@@ -37,6 +37,9 @@ impl MMU {
     }
 
     pub fn wb(&mut self, address: u16, value: u8) {
+        if address >= 8000 && address <= 0x97FF && value != 0 {
+            println!("MMU[{:#X}] = {:#b}", address, value);
+        }
         self.mem[address as usize] = value;
     }
 }
