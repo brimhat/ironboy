@@ -84,12 +84,20 @@ impl CPU {
                         self.reg.h = self.reg.a;
                         self.reg.pc += 1;
                     },
+                    (Target::A, Target::B) => {
+                        self.reg.a = self.reg.b;
+                        self.reg.pc += 1;
+                    },
                     (Target::A, Target::E) => {
                         self.reg.a = self.reg.e;
                         self.reg.pc += 1;
                     },
                     (Target::A, Target::H) => {
-                        self.reg.a = self.reg.e;
+                        self.reg.a = self.reg.h;
+                        self.reg.pc += 1;
+                    },
+                    (Target::A, Target::L) => {
+                        self.reg.a = self.reg.l;
                         self.reg.pc += 1;
                     },
                     (Target::FFIMM8, Target::A) => {
@@ -161,6 +169,22 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
+            Instruction::ADD(t) => {
+                match t {
+                    Target::HL => {
+                        let at_hl = mmu.rb(self.reg.hl());
+                        let (v, c) = self.reg.a.overflowing_add(at_hl);
+                        let hc = (self.reg.a & 0x0F) + (at_hl & 0x0F) > 0x0F;
+                        self.reg.set_flag(Flag::Z, v == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::C, c);
+                        self.reg.set_flag(Flag::H, hc);
+                        self.reg.a = v;
+                        self.reg.pc += 1;
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                }
+            }
             Instruction::DEC(t) => {
                 match t {
                     Target::A => {
@@ -280,6 +304,15 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
+            Instruction::JP(f) => {
+                match f {
+                    JumpFlag::A => {
+                        let jump = self.get_imm16(mmu);
+                        self.reg.pc = jump;
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                }
+            }
             Instruction::CALL(f) => {
                 match f {
                     JumpFlag::A => {
@@ -342,7 +375,8 @@ impl CPU {
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
                 self.reg.pc += 1;
-            }
+            },
+            Instruction::NOP => self.reg.pc += 1,
             _ => panic!("Unrecognized instr: {:?}", instr)
         }
     }
@@ -364,20 +398,20 @@ impl CPU {
         self.execute(mmu, instr);
 
         // DEBUGGING
-//        if self.reg.pc > 0x80 {
-//            println!("{:#X}: {:?}\nSTATE AFTER EXECUTION:", byte, instr);
-//            println!(
-//                "PC: {:#X}, AF: {:#X}, BC: {:#X}, DE: {:#X}, HL: {:#X}, SP: {:#X}",
-//                self.reg.pc, self.reg.af(), self.reg.bc(), self.reg.de(), self.reg.hl(), self.reg.sp
-//            );
-//            println!(
-//                "Z: {}, N: {}, H: {}, C: {}\n",
-//                self.reg.get_flag(Flag::Z), self.reg.get_flag(Flag::N),
-//                self.reg.get_flag(Flag::H), self.reg.get_flag(Flag::C)
-//            );
-//        }
-        if self.reg.pc >= 0xE0 {
-            panic!("ALL DONE");
+        if mmu.rb(0xFF50) != 0 {
+            println!("{:#X}: {:?}\nSTATE AFTER EXECUTION:", byte, instr);
+            println!(
+                "PC: {:#X}, AF: {:#X}, BC: {:#X}, DE: {:#X}, HL: {:#X}, SP: {:#X}",
+                self.reg.pc, self.reg.af(), self.reg.bc(), self.reg.de(), self.reg.hl(), self.reg.sp
+            );
+            println!(
+                "Z: {}, N: {}, H: {}, C: {}\n",
+                self.reg.get_flag(Flag::Z), self.reg.get_flag(Flag::N),
+                self.reg.get_flag(Flag::H), self.reg.get_flag(Flag::C)
+            );
+        }
+        if self.reg.pc == 0x294 {
+            panic!("STOP");
         }
         clocks
     }
@@ -412,6 +446,7 @@ enum Instruction {
     DEC(Target),
     BIT(u8, Target),
     JR(JumpFlag),
+    JP(JumpFlag),
     CALL(JumpFlag),
     RET(JumpFlag),
     PUSH(Target),
@@ -420,6 +455,8 @@ enum Instruction {
     RLA,
     CP(Target),
     SUB(Target),
+    ADD(Target),
+    NOP,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -430,12 +467,14 @@ enum Target {
 
 #[derive(Debug, Copy, Clone)]
 enum JumpFlag {
-    A, NZ, Z
+    A, NZ, Z,
+    AtHl,
 }
 
 impl Instruction {
     pub fn decode(opcode: u8) -> Instruction {
         match opcode {
+            0x00 => Instruction::NOP,
             0x04 => Instruction::INC(Target::B),
             0x05 => Instruction::DEC(Target::B),
             0x06 => Instruction::LD(Target::B, Target::IMM8),
@@ -466,12 +505,16 @@ impl Instruction {
             0x57 => Instruction::LD(Target::D, Target::A),
             0x67 => Instruction::LD(Target::H, Target::A),
             0x77 => Instruction::LD(Target::HL, Target::A),
+            0x78 => Instruction::LD(Target::A, Target::B),
             0x7B => Instruction::LD(Target::A, Target::E),
             0x7C => Instruction::LD(Target::A, Target::H),
+            0x7D => Instruction::LD(Target::A, Target::L),
+            0x86 => Instruction::ADD(Target::HL),
             0x90 => Instruction::SUB(Target::B),
             0xAF => Instruction::XOR(Target::A),
             0xBE => Instruction::CP(Target::HL),
             0xC1 => Instruction::POP(Target::BC),
+            0xC3 => Instruction::JP(JumpFlag::A),
             0xC9 => Instruction::RET(JumpFlag::A),
             0xC5 => Instruction::PUSH(Target::BC),
             0xCD => Instruction::CALL(JumpFlag::A),
@@ -512,5 +555,21 @@ mod test {
         cpu.execute(&mut mmu, Instruction::RLA);
         assert_eq!(cpu.reg.a, 0x2B);
         assert_eq!(cpu.reg.get_flag(Flag::C), true);
+    }
+
+    #[test]
+    fn add() {
+        let mut cpu = CPU::new();
+        let mut mmu = MMU::new();
+        cpu.reg.set_hl(0x3000);
+        cpu.reg.a = 0x3A;
+        mmu.wb(cpu.reg.hl(), 0xC6);
+        cpu.reg.set_flag(Flag::H, false);
+        cpu.execute(&mut mmu, Instruction::ADD(Target::HL));
+        assert_eq!(cpu.reg.a, 0x0);
+        assert_eq!(cpu.reg.get_flag(Flag::Z), true);
+        assert_eq!(cpu.reg.get_flag(Flag::N), false);
+        assert_eq!(cpu.reg.get_flag(Flag::C), true);
+        assert_eq!(cpu.reg.get_flag(Flag::H), true);
     }
 }
