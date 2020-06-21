@@ -125,17 +125,14 @@ impl PPU {
             let map_y = (y / 8) as u16;
             let map_x = (x / 8) as u16;
             let tile_map_address = tile_map_start + (map_y * 32 + map_x);
-            let tile_index = mmu.rb(tile_map_address) as u16;
-            if tile_map_address > 0x9BFF {
-                panic!("index overflow: {:#X}", tile_map_address);
-            }
-            // grab 16 bits from character ram
-            let normalized_index: u16 = (VRAM_START + tile_index * 16);
-            let byte1 = mmu.rb(normalized_index);
-            let byte2 = mmu.rb(normalized_index + 1);
-            if byte1 != 0 || byte2 != 0 {
-                println!("BYTE1: {:#b}, \nBYTE2: {:#b}\n", byte1, byte2);
-            }
+            let tile_map_index = mmu.rb(tile_map_address) as u16;
+            // grab two bytes
+            // each tile is 16 bytes long (8x8 pixels of 2-bit color)
+            let tile_idx = tile_map_index * 16;
+            let tile_row = (y as u16 % 8) * 2;
+            let index = VRAM_START + tile_idx + tile_row;
+            let byte1 = mmu.rb(index);
+            let byte2 = mmu.rb(index + 1);
             // convert bits to color
             let mask = 1 << (7 - (x % 8));
             let bit1 = byte1 & mask != 0;
@@ -143,9 +140,6 @@ impl PPU {
             let pair = ((bit1 as u8) << 1) | bit2 as u8;
 
             let color = PPU::get_color_from(pair);
-//            if color != LIGHTEST {
-//                println!("Writing {:#X} at ROW: {} COL: {}", color, self.get_ly(mmu), i);
-//            }
             self.data[self.get_ly(mmu) as usize][i] = color;
         }
     }
