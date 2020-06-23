@@ -1,14 +1,15 @@
+const MEM_SIZE: usize = 0xFFFF + 1;
 
 pub struct MMU {
     pub boot: [u8; 0x100],
-    mem: [u8; 0xFFFF]
+    mem: [u8; MEM_SIZE]
 }
 
 impl MMU {
     pub fn new() -> MMU {
         MMU {
             boot: [0; 0x100],
-            mem: [0; 0xFFFF]
+                mem: [0; MEM_SIZE]
         }
     }
 

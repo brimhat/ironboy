@@ -24,6 +24,10 @@ impl CPU {
                         self.reg.sp = self.get_imm16(mmu);
                         self.reg.pc += 3;
                     },
+                    (Target::BC, Target::IMM16) => {
+                        self.reg.set_bc(self.get_imm16(mmu));
+                        self.reg.pc += 3;
+                    }
                     (Target::DE, Target::IMM16) => {
                         self.reg.set_de(self.get_imm16(mmu));
                         self.reg.pc += 3;
@@ -40,6 +44,10 @@ impl CPU {
                         mmu.wb(self.reg.hld(), self.reg.a);
                         self.reg.pc += 1;
                     },
+                    (Target::A, Target::HLI) => {
+                        self.reg.a = mmu.rb(self.reg.hli());
+                        self.reg.pc += 1;
+                    }
                     (Target::HL, Target::A) => {
                         mmu.wb(self.reg.hl(), self.reg.a);
                         self.reg.pc += 1;
@@ -72,6 +80,11 @@ impl CPU {
                         self.reg.l = self.get_imm8(mmu);
                         self.reg.pc += 2;
                     },
+                    (Target::HL, Target::IMM8) => {
+                        let imm8 = self.get_imm8(mmu);
+                        mmu.wb(self.reg.hl(), imm8);
+                        self.reg.pc += 2;
+                    }
                     (Target::C, Target::A) => {
                         self.reg.c = self.reg.a;
                         self.reg.pc += 1;
@@ -132,6 +145,19 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
+            Instruction::OR(t) => {
+                match t {
+                    Target::C => {
+                        self.reg.a |= self.reg.c;
+                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::C, false);
+                        self.reg.set_flag(Flag::H, false);
+                        self.reg.pc += 1;
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                }
+            }
             Instruction::INC(t) => {
                 match t {
                     Target::C => {
@@ -227,6 +253,11 @@ impl CPU {
                         self.reg.e = e;
                         self.reg.pc += 1;
                     },
+                    Target::BC => {
+                        self.reg.set_bc(self.reg.bc().wrapping_sub(1));
+                        self.reg.pc += 1;
+
+                    }
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
@@ -376,6 +407,10 @@ impl CPU {
                 self.reg.set_flag(Flag::C, c);
                 self.reg.pc += 1;
             },
+            Instruction::DI => {
+                self.ime = false;
+                self.reg.pc += 1;
+            }
             Instruction::NOP => self.reg.pc += 1,
             _ => panic!("Unrecognized instr: {:?}", instr)
         }
@@ -442,6 +477,7 @@ impl CPU {
 enum Instruction {
     LD(Target, Target),
     XOR(Target),
+    OR(Target),
     INC(Target),
     DEC(Target),
     BIT(u8, Target),
@@ -457,6 +493,7 @@ enum Instruction {
     SUB(Target),
     ADD(Target),
     NOP,
+    DI,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -475,9 +512,11 @@ impl Instruction {
     pub fn decode(opcode: u8) -> Instruction {
         match opcode {
             0x00 => Instruction::NOP,
+            0x01 => Instruction::LD(Target::BC, Target::IMM16),
             0x04 => Instruction::INC(Target::B),
             0x05 => Instruction::DEC(Target::B),
             0x06 => Instruction::LD(Target::B, Target::IMM8),
+            0x0B => Instruction::DEC(Target::BC),
             0x0C => Instruction::INC(Target::C),
             0x0D => Instruction::DEC(Target::C),
             0x0E => Instruction::LD(Target::C, Target::IMM8),
@@ -496,9 +535,11 @@ impl Instruction {
             0x23 => Instruction::INC(Target::HL),
             0x24 => Instruction::INC(Target::H),
             0x28 => Instruction::JR(JumpFlag::Z),
+            0x2A => Instruction::LD(Target::A, Target::HLI),
             0x2E => Instruction::LD(Target::L, Target::IMM8),
             0x31 => Instruction::LD(Target::SP, Target::IMM16),
             0x32 => Instruction::LD(Target::HLD, Target::A),
+            0x36 => Instruction::LD(Target::HL, Target::IMM8),
             0x3D => Instruction::DEC(Target::A),
             0x3E => Instruction::LD(Target::A, Target::IMM8),
             0x4F => Instruction::LD(Target::C, Target::A),
@@ -512,6 +553,7 @@ impl Instruction {
             0x86 => Instruction::ADD(Target::HL),
             0x90 => Instruction::SUB(Target::B),
             0xAF => Instruction::XOR(Target::A),
+            0xB1 => Instruction::OR(Target::C),
             0xBE => Instruction::CP(Target::HL),
             0xC1 => Instruction::POP(Target::BC),
             0xC3 => Instruction::JP(JumpFlag::A),
@@ -522,6 +564,7 @@ impl Instruction {
             0xE2 => Instruction::LD(Target::FFC, Target::A),
             0xEA => Instruction::LD(Target::IMM16, Target::A),
             0xF0 => Instruction::LD(Target::A, Target::FFIMM8),
+            0xF3 => Instruction::DI,
             0xFE => Instruction::CP(Target::IMM8),
             _ => panic!("Unrecognized opcode: {:#X}", opcode)
         }
