@@ -8,9 +8,10 @@ const DARK: u32     = 0xFF306230;
 const LIGHT: u32    = 0xFF8BAC0F;
 const LIGHTEST: u32 = 0xFF9BBC0F;
 
-const TILE_MAP0: usize = 0x9800;
-const TILE_MAP1: usize = 0x9C00;
-const VRAM_START: u16 = 0x8000;
+const TILE_MAP0: u16 = 0x9800;
+const TILE_MAP1: u16 = 0x9C00;
+const VRAM0_START: u16 = 0x8800;
+const VRAM1_START: u16 = 0x8000;
 const OAM_SEARCH_END: u16 = 80;
 const PIXEL_TRANSFER_END: u16 = (80 + 172);
 const HBLANK_END: u16 = 456;
@@ -54,6 +55,9 @@ impl PPU {
         let clean_stat = stat & 0b1000_0111;
         let coincidence: u8 = if self.get_ly(mmu) == lyc { 0b0100_0000 } else { 0 };
         mmu.wb(0xFF41, clean_stat | coincidence | mode as u8);
+
+        let i_f = mmu.rb(0xFF0F);
+        mmu.wb(0xFF0F, i_f | 0x02);
     }
 
     pub fn get_color_from(pair: u8) -> u32 {
@@ -86,6 +90,8 @@ impl PPU {
             if self.mode != Mode::VBlank {
                 self.update_screen = true;
                 self.mode = Mode::VBlank;
+                let i_f = mmu.rb(0xFF0F);
+                mmu.wb(0xFF0F, i_f | 0x01);
                 if (stat & Mode::VBlank as u8) == 0 {
                     self.set_stat(mmu, Mode::VBlank);
                 }
@@ -114,8 +120,20 @@ impl PPU {
     pub fn draw_bg(&mut self, mmu: &mut MMU) {
         let scx = mmu.rb(0xFF43);
         let scy = mmu.rb(0xFF42);
+        let lcdc = mmu.rb(0xFF40);
         let y = scy.wrapping_add(self.get_ly(mmu));
-        let tile_map_start = TILE_MAP0 as u16;
+
+        let tile_start = if lcdc & (1 << 4) == 0 {
+            VRAM0_START
+        } else {
+            VRAM1_START
+        };
+
+        let map_start = if lcdc & (1 << 3) == 0 {
+            TILE_MAP0
+        } else {
+            TILE_MAP1
+        };
 
         for i in 0..SCREEN_W {
             let x = scx.wrapping_add(i as u8);
@@ -124,13 +142,13 @@ impl PPU {
             // tile map is 32x32 tiles in length
             let map_y = (y / 8) as u16;
             let map_x = (x / 8) as u16;
-            let tile_map_address = tile_map_start + (map_y * 32 + map_x);
+            let tile_map_address = map_start + (map_y * 32 + map_x);
             let tile_map_index = mmu.rb(tile_map_address) as u16;
             // grab two bytes
             // each tile is 16 bytes long (8x8 pixels of 2-bit color)
             let tile_idx = tile_map_index * 16;
             let tile_row = (y as u16 % 8) * 2;
-            let index = VRAM_START + tile_idx + tile_row;
+            let index = tile_start + tile_idx + tile_row;
             let byte1 = mmu.rb(index);
             let byte2 = mmu.rb(index + 1);
             // convert bits to color

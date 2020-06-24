@@ -6,6 +6,7 @@ use crate::instructions::{CLOCKS, CB_CLOCKS};
 pub struct CPU {
     pub reg: Registers,
     pub ime: bool,
+    pub halt: bool,
 }
 
 impl CPU {
@@ -13,6 +14,7 @@ impl CPU {
         CPU {
             reg: Registers::new(),
             ime: false,
+            halt: false,
         }
     }
 
@@ -85,6 +87,10 @@ impl CPU {
                         mmu.wb(self.reg.hl(), imm8);
                         self.reg.pc += 2;
                     }
+                    (Target::B, Target::A) => {
+                        self.reg.b = self.reg.a;
+                        self.reg.pc += 1;
+                    },
                     (Target::C, Target::A) => {
                         self.reg.c = self.reg.a;
                         self.reg.pc += 1;
@@ -99,6 +105,10 @@ impl CPU {
                     },
                     (Target::A, Target::B) => {
                         self.reg.a = self.reg.b;
+                        self.reg.pc += 1;
+                    },
+                    (Target::A, Target::C) => {
+                        self.reg.a = self.reg.c;
                         self.reg.pc += 1;
                     },
                     (Target::A, Target::E) => {
@@ -129,6 +139,10 @@ impl CPU {
                         mmu.wb(self.get_imm16(mmu), self.reg.a);
                         self.reg.pc += 3;
                     },
+                    (Target::A, Target::IMM16) => {
+                        self.reg.a = mmu.rb(self.get_imm16(mmu));
+                        self.reg.pc += 3;
+                    }
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
@@ -142,11 +156,27 @@ impl CPU {
                         self.reg.set_flag(Flag::C, false);
                         self.reg.pc += 1;
                     },
+                    Target::C => {
+                        self.reg.a ^= self.reg.c;
+                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::H, false);
+                        self.reg.set_flag(Flag::C, false);
+                        self.reg.pc += 1;
+                    },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
             Instruction::OR(t) => {
                 match t {
+                    Target::B => {
+                        self.reg.a |= self.reg.b;
+                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::C, false);
+                        self.reg.set_flag(Flag::H, false);
+                        self.reg.pc += 1;
+                    },
                     Target::C => {
                         self.reg.a |= self.reg.c;
                         self.reg.set_flag(Flag::Z, self.reg.a == 0);
@@ -157,15 +187,44 @@ impl CPU {
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
-            }
+            },
+            Instruction::AND(t) => {
+                match t {
+                    Target::IMM8 => {
+                        self.reg.a &= self.get_imm8(mmu);
+                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::H, true);
+                        self.reg.set_flag(Flag::C, false);
+                        self.reg.pc += 2;
+                    },
+                    Target::A => {
+                        self.reg.a &= self.reg.a;
+                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::H, true);
+                        self.reg.set_flag(Flag::C, false);
+                        self.reg.pc += 1;
+                    },
+                    Target::C => {
+                        self.reg.a &= self.reg.c;
+                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::H, true);
+                        self.reg.set_flag(Flag::C, false);
+                        self.reg.pc += 1;
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                }
+            },
             Instruction::INC(t) => {
                 match t {
-                    Target::C => {
-                        let c = self.reg.c.wrapping_add(1);
-                        self.reg.set_flag(Flag::Z, c == 0);
+                    Target::A => {
+                        let a = self.reg.a.wrapping_add(1);
+                        self.reg.set_flag(Flag::Z, a == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (self.reg.c & 0x0F) + 1 > 0x0F);
-                        self.reg.c = c;
+                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) + 1 > 0x0F);
+                        self.reg.a = a;
                         self.reg.pc += 1;
                     },
                     Target::B => {
@@ -174,6 +233,14 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (self.reg.b & 0x0F) + 1 > 0x0F);
                         self.reg.b = b;
+                        self.reg.pc += 1;
+                    },
+                    Target::C => {
+                        let c = self.reg.c.wrapping_add(1);
+                        self.reg.set_flag(Flag::Z, c == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::H, (self.reg.c & 0x0F) + 1 > 0x0F);
+                        self.reg.c = c;
                         self.reg.pc += 1;
                     },
                     Target::H => {
@@ -192,6 +259,15 @@ impl CPU {
                         self.reg.set_de(self.reg.de().wrapping_add(1));
                         self.reg.pc += 1;
                     },
+                    Target::AtHL => {
+                        let at_hl = mmu.rb(self.reg.hl());
+                        let new_hl = at_hl.wrapping_add(1);
+                        self.reg.set_flag(Flag::Z, new_hl == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::H, (at_hl & 0x0F) + 1 > 0x0F);
+                        mmu.wb(self.reg.hl(), new_hl);
+                        self.reg.pc += 1;
+                    }
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
@@ -361,13 +437,42 @@ impl CPU {
                         self.reg.pc = self.pop(mmu);
                         self.reg.sp += 2;
                     },
+                    JumpFlag::NZ => {
+                        self.reg.pc += 1;
+                        if !self.reg.get_flag(Flag::Z) {
+                            self.reg.pc = self.pop(mmu);
+                            self.reg.sp += 2;
+                        }
+                    },
+                    JumpFlag::Z => {
+                        self.reg.pc += 1;
+                        if self.reg.get_flag(Flag::Z) {
+                            self.reg.pc = self.pop(mmu);
+                            self.reg.sp += 2;
+                        }
+                    },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             }
             Instruction::PUSH(t) => {
                 match t {
+                    Target::AF => {
+                        self.push(mmu, self.reg.af());
+                        self.reg.sp -= 2;
+                        self.reg.pc += 1;
+                    },
                     Target::BC => {
                         self.push(mmu, self.reg.bc());
+                        self.reg.sp -= 2;
+                        self.reg.pc += 1;
+                    },
+                    Target::DE => {
+                        self.push(mmu, self.reg.de());
+                        self.reg.sp -= 2;
+                        self.reg.pc += 1;
+                    },
+                    Target::HL => {
+                        self.push(mmu, self.reg.hl());
                         self.reg.sp -= 2;
                         self.reg.pc += 1;
                     },
@@ -376,14 +481,34 @@ impl CPU {
             },
             Instruction::POP(t) => {
                 match t {
+                    Target::AF => {
+                        self.reg.set_af(self.pop(mmu));
+                        self.reg.sp += 2;
+                        self.reg.pc += 1;
+                    },
                     Target::BC => {
                         self.reg.set_bc(self.pop(mmu));
+                        self.reg.sp += 2;
+                        self.reg.pc += 1;
+                    },
+                    Target::DE => {
+                        self.reg.set_de(self.pop(mmu));
+                        self.reg.sp += 2;
+                        self.reg.pc += 1;
+                    },
+                    Target::HL => {
+                        self.reg.set_hl(self.pop(mmu));
                         self.reg.sp += 2;
                         self.reg.pc += 1;
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
+            Instruction::RST(t) => {
+                self.push(mmu, self.reg.pc);
+                self.reg.sp -= 2;
+                self.reg.pc = t as u16;
+            }
             Instruction::RL(t) => {
                 match t {
                     Target::C => {
@@ -398,6 +523,21 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
+            Instruction::SWAP(t) => {
+                match t {
+                    Target::A => {
+                        let hi = (self.reg.a & 0x0F) << 4;
+                        let lo = (self.reg.a & 0xF0) >> 4;
+                        self.reg.a = hi | lo;
+                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                        self.reg.set_flag(Flag::N, false);
+                        self.reg.set_flag(Flag::H, false);
+                        self.reg.set_flag(Flag::C, false);
+                        self.reg.pc += 1;
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                }
+            }
             Instruction::RLA => {
                 let c = (self.reg.a & 0x80) != 0;
                 self.reg.a = (self.reg.a << 1) + (self.reg.get_flag(Flag::C) as u8);
@@ -407,9 +547,24 @@ impl CPU {
                 self.reg.set_flag(Flag::C, c);
                 self.reg.pc += 1;
             },
+            Instruction::CPL => {
+                self.reg.a = !self.reg.a;
+                self.reg.set_flag(Flag::N, true);
+                self.reg.set_flag(Flag::H, true);
+                self.reg.pc += 1;
+            },
             Instruction::DI => {
                 self.ime = false;
                 self.reg.pc += 1;
+            },
+            Instruction::EI => {
+                self.ime = true;
+                self.reg.pc += 1;
+            },
+            Instruction::RETI => {
+                self.ime = true;
+                self.reg.pc = self.pop(mmu);
+                self.reg.sp += 2;
             }
             Instruction::NOP => self.reg.pc += 1,
             _ => panic!("Unrecognized instr: {:?}", instr)
@@ -430,25 +585,64 @@ impl CPU {
             }
         };
 
-        self.execute(mmu, instr);
+        let old_pc = self.reg.pc;
+        if self.interrupt_exists(mmu) {
+            self.handle_interrupt(mmu);
+        }
 
-        // DEBUGGING
-        if mmu.rb(0xFF50) != 0 {
-            println!("{:#X}: {:?}\nSTATE AFTER EXECUTION:", byte, instr);
-            println!(
-                "PC: {:#X}, AF: {:#X}, BC: {:#X}, DE: {:#X}, HL: {:#X}, SP: {:#X}",
-                self.reg.pc, self.reg.af(), self.reg.bc(), self.reg.de(), self.reg.hl(), self.reg.sp
-            );
-            println!(
-                "Z: {}, N: {}, H: {}, C: {}\n",
-                self.reg.get_flag(Flag::Z), self.reg.get_flag(Flag::N),
-                self.reg.get_flag(Flag::H), self.reg.get_flag(Flag::C)
-            );
+        if !self.halt && self.reg.pc == old_pc {
+            self.execute(mmu, instr);
+
+            // DEBUGGING
+            if mmu.rb(0xFF50) != 0 {
+                println!("{:#X}: {:?}\nSTATE AFTER EXECUTION:", byte, instr);
+                println!(
+                    "PC: {:#X}, AF: {:#X}, BC: {:#X}, DE: {:#X}, HL: {:#X}, SP: {:#X}",
+                    self.reg.pc, self.reg.af(), self.reg.bc(),
+                    self.reg.de(), self.reg.hl(), self.reg.sp,
+                );
+                println!(
+                    "Z: {}, N: {}, H: {}, C: {}\n",
+                    self.reg.get_flag(Flag::Z), self.reg.get_flag(Flag::N),
+                    self.reg.get_flag(Flag::H), self.reg.get_flag(Flag::C)
+                );
+            }
         }
-        if self.reg.pc == 0x294 {
-            panic!("STOP");
-        }
+
         clocks
+    }
+
+    pub fn interrupt_exists(&self, mmu: &mut MMU) -> bool {
+        let e_i = mmu.rb(0xFFFF);
+        let i_f = mmu.rb(0xFF0F);
+        let e_f = e_i & i_f;
+
+        (self.halt || self.ime) && e_f != 0
+    }
+
+    pub fn handle_interrupt(&mut self, mmu: &mut MMU) {
+        self.halt = false;
+        if !self.ime {
+            return;
+        }
+        self.ime = false;
+
+        let e_i = mmu.rb(0xFFFF);
+        let i_f = mmu.rb(0xFF0F);
+        let e_f = e_i & i_f;
+        let index = e_f.trailing_zeros();
+        mmu.wb(0xFF0F, e_f & !(1 << index));
+
+        self.push(mmu, self.reg.pc);
+        self.reg.sp -= 2;
+        self.reg.pc = match index {
+            0 => 0x40, // VBlank
+            1 => 0x48, // LCD Stat
+            2 => 0x50, // Timer overflow
+            3 => 0x58, // Serial link
+            4 => 0x60, // Joypad press
+            _ => panic!("unrecognized interrupt: {:#b}", e_f),
+        }
     }
 
     pub fn get_imm16(&self, mmu: &MMU) -> u16 {
@@ -478,34 +672,40 @@ enum Instruction {
     LD(Target, Target),
     XOR(Target),
     OR(Target),
+    AND(Target),
     INC(Target),
     DEC(Target),
     BIT(u8, Target),
+    SWAP(Target),
     JR(JumpFlag),
     JP(JumpFlag),
     CALL(JumpFlag),
     RET(JumpFlag),
     PUSH(Target),
     POP(Target),
+    RST(u8),
     RL(Target),
     RLA,
     CP(Target),
     SUB(Target),
     ADD(Target),
+    CPL,
     NOP,
     DI,
+    EI,
+    RETI,
 }
 
 #[derive(Debug, Copy, Clone)]
 enum Target {
-    A, B, C, BC, D, E, DE, H, L, HL, HLI, HLD, SP, IMM8, IMM16, FFC, FFIMM8,
+    A, AF, B, C, BC, D, E, DE, H, L, HL, HLI, HLD, SP, IMM8, IMM16, FFC, FFIMM8,
     AtHL // only used for INC (HL) and DEC (HL)
 }
 
 #[derive(Debug, Copy, Clone)]
 enum JumpFlag {
     A, NZ, Z,
-    AtHl,
+    AtHL,
 }
 
 impl Instruction {
@@ -537,34 +737,56 @@ impl Instruction {
             0x28 => Instruction::JR(JumpFlag::Z),
             0x2A => Instruction::LD(Target::A, Target::HLI),
             0x2E => Instruction::LD(Target::L, Target::IMM8),
+            0x2F => Instruction::CPL,
             0x31 => Instruction::LD(Target::SP, Target::IMM16),
             0x32 => Instruction::LD(Target::HLD, Target::A),
+            0x34 => Instruction::INC(Target::AtHL),
             0x36 => Instruction::LD(Target::HL, Target::IMM8),
+            0x3C => Instruction::INC(Target::A),
             0x3D => Instruction::DEC(Target::A),
             0x3E => Instruction::LD(Target::A, Target::IMM8),
+            0x47 => Instruction::LD(Target::B, Target::A),
             0x4F => Instruction::LD(Target::C, Target::A),
             0x57 => Instruction::LD(Target::D, Target::A),
             0x67 => Instruction::LD(Target::H, Target::A),
             0x77 => Instruction::LD(Target::HL, Target::A),
             0x78 => Instruction::LD(Target::A, Target::B),
+            0x79 => Instruction::LD(Target::A, Target::C),
             0x7B => Instruction::LD(Target::A, Target::E),
             0x7C => Instruction::LD(Target::A, Target::H),
             0x7D => Instruction::LD(Target::A, Target::L),
             0x86 => Instruction::ADD(Target::HL),
             0x90 => Instruction::SUB(Target::B),
+            0xA1 => Instruction::AND(Target::C),
+            0xA7 => Instruction::AND(Target::A),
+            0xA9 => Instruction::XOR(Target::C),
             0xAF => Instruction::XOR(Target::A),
+            0xB0 => Instruction::OR(Target::B),
             0xB1 => Instruction::OR(Target::C),
             0xBE => Instruction::CP(Target::HL),
+            0xC0 => Instruction::RET(JumpFlag::NZ),
             0xC1 => Instruction::POP(Target::BC),
             0xC3 => Instruction::JP(JumpFlag::A),
             0xC9 => Instruction::RET(JumpFlag::A),
             0xC5 => Instruction::PUSH(Target::BC),
+            0xC8 => Instruction::RET(JumpFlag::Z),
             0xCD => Instruction::CALL(JumpFlag::A),
+            0xD1 => Instruction::POP(Target::DE),
+            0xD5 => Instruction::PUSH(Target::DE),
+            0xD9 => Instruction::RETI,
             0xE0 => Instruction::LD(Target::FFIMM8, Target::A),
+            0xE1 => Instruction::POP(Target::HL),
             0xE2 => Instruction::LD(Target::FFC, Target::A),
+            0xE5 => Instruction::PUSH(Target::HL),
+            0xE6 => Instruction::AND(Target::IMM8),
             0xEA => Instruction::LD(Target::IMM16, Target::A),
+            0xEF => Instruction::RST(0x28),
             0xF0 => Instruction::LD(Target::A, Target::FFIMM8),
+            0xF1 => Instruction::POP(Target::AF),
             0xF3 => Instruction::DI,
+            0xF5 => Instruction::PUSH(Target::AF),
+            0xFA => Instruction::LD(Target::A, Target::IMM16),
+            0xFB => Instruction::EI,
             0xFE => Instruction::CP(Target::IMM8),
             _ => panic!("Unrecognized opcode: {:#X}", opcode)
         }
@@ -573,6 +795,7 @@ impl Instruction {
     pub fn decode_cb(opcode: u8) -> Instruction {
         match opcode {
             0x11 => Instruction::RL(Target::C),
+            0x37 => Instruction::SWAP(Target::A),
             0x7C => Instruction::BIT(7, Target::H),
             _ => panic!("Unrecognized prefixed opcode: {:#X}", opcode)
         }
@@ -614,5 +837,33 @@ mod test {
         assert_eq!(cpu.reg.get_flag(Flag::N), false);
         assert_eq!(cpu.reg.get_flag(Flag::C), true);
         assert_eq!(cpu.reg.get_flag(Flag::H), true);
+    }
+
+    #[test]
+    fn cp() {
+        let mut cpu = CPU::new();
+        let mut mmu = MMU::new();
+        cpu.reg.set_hl(0x3000);
+        cpu.reg.a = 0x3A;
+        mmu.wb(cpu.reg.hl(), 0x40);
+        cpu.execute(&mut mmu, Instruction::CP(Target::HL));
+        assert_eq!(cpu.reg.a, 0x3A);
+        assert_eq!(cpu.reg.get_flag(Flag::Z), false);
+        assert_eq!(cpu.reg.get_flag(Flag::N), true);
+        assert_eq!(cpu.reg.get_flag(Flag::H), false);
+        assert_eq!(cpu.reg.get_flag(Flag::C), true);
+    }
+
+    #[test]
+    fn swap() {
+        let mut cpu = CPU::new();
+        let mut mmu = MMU::new();;
+        cpu.reg.a = 0x0F;
+        cpu.execute(&mut mmu, Instruction::SWAP(Target::A));
+        assert_eq!(cpu.reg.a, 0xF0);
+        assert_eq!(cpu.reg.get_flag(Flag::Z), false);
+        assert_eq!(cpu.reg.get_flag(Flag::N), false);
+        assert_eq!(cpu.reg.get_flag(Flag::H), false);
+        assert_eq!(cpu.reg.get_flag(Flag::C), false);
     }
 }
