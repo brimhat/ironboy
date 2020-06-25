@@ -77,8 +77,7 @@ impl PPU {
         }
 
         self.update_screen = false;
-        let mut stat = mmu.rb(0xFF41);
-        let lyc = mmu.rb(0xFF45);
+        let stat = mmu.rb(0xFF41);
 
         self.mode_clock += clocks as u16;
         if self.mode_clock >= 456 {
@@ -120,8 +119,10 @@ impl PPU {
     pub fn draw_bg(&mut self, mmu: &mut MMU) {
         let scx = mmu.rb(0xFF43);
         let scy = mmu.rb(0xFF42);
+        let wx = mmu.rb(0xFF4A).wrapping_sub(7);
+        let wy = mmu.rb(0xFF4B);
         let lcdc = mmu.rb(0xFF40);
-        let y = scy.wrapping_add(self.get_ly(mmu));
+        let ly = self.get_ly(mmu);
 
         let tile_start = if lcdc & (1 << 4) == 0 {
             VRAM0_START
@@ -129,14 +130,23 @@ impl PPU {
             VRAM1_START
         };
 
-        let map_start = if lcdc & (1 << 3) == 0 {
-            TILE_MAP0
-        } else {
-            TILE_MAP1
-        };
+        let y_in_win = ly >= wy && lcdc & (1 << 5) != 0;
+        let win_map0 = lcdc & (1 << 6) == 0;
+        let bg_map0 = lcdc & (1 << 3) == 0;
 
         for i in 0..SCREEN_W {
-            let x = scx.wrapping_add(i as u8);
+            let writing_win = (i as u8) >= wx && y_in_win;
+            let (x, y) = if writing_win {
+                ( (i as u8).wrapping_sub(wx), ly.wrapping_sub(wy) )
+            } else {
+                ( (i as u8).wrapping_add(scx), ly.wrapping_add(scy) )
+            };
+
+            let map_start = if (writing_win && win_map0) || bg_map0 {
+                TILE_MAP0
+            } else {
+                TILE_MAP1
+            };
 
             // grab tile num from tile map
             // tile map is 32x32 tiles in length
