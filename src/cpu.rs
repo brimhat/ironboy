@@ -310,7 +310,7 @@ impl CPU {
                         self.reg.set_flag(Flag::H, hc);
                         self.reg.a = v;
                         self.reg.pc += 1;
-                    }
+                    },
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let (v, c) = self.reg.a.overflowing_add(at_hl);
@@ -330,7 +330,7 @@ impl CPU {
                     Target::DE => {
                         let de = self.reg.de();
                         let (v, c) = self.reg.hl().overflowing_add(de);
-                        let hc = (self.reg.hl() & 0x7FF) + (de & 0x7FF) > 0x7FF;
+                        let hc = (self.reg.hl() & 0x0FFF) + (de & 0x0FFF) > 0x0FFF;
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::C, c);
                         self.reg.set_flag(Flag::H, hc);
@@ -339,7 +339,7 @@ impl CPU {
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
-            }
+            },
             Instruction::DEC(t) => {
                 match t {
                     Target::A => {
@@ -968,7 +968,7 @@ mod test {
         cpu.execute(&mut mmu, Instruction::ADDHL(Target::DE));
         assert_eq!(cpu.reg.hl(), 0x1446);
         assert_eq!(cpu.reg.get_flag(Flag::N), false);
-        assert_eq!(cpu.reg.get_flag(Flag::H), false);
+        assert_eq!(cpu.reg.get_flag(Flag::H), true);
         assert_eq!(cpu.reg.get_flag(Flag::C), true);
     }
 }

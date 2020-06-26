@@ -54,6 +54,7 @@ fn main() {
                 }
             }
             window.update_with_buffer(&buffer, SCREEN_W, SCREEN_H).unwrap();
+            ppu.update_screen = false;
         }
     }
 //    loop {
