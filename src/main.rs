@@ -3,6 +3,7 @@ mod registers;
 mod cpu;
 mod ppu;
 mod instructions;
+mod test { mod cpu; }
 
 use std::io;
 use std::io::prelude::*;
