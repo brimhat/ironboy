@@ -3,6 +3,55 @@ use crate::cpu::{ CPU, Instruction, JumpFlag, Target };
 use crate::registers::{ Registers, Flag };
 
 #[test]
+fn ld() {
+    let mut cpu = CPU::new();
+    let mut mmu = MMU::new();
+
+    // LD r r
+    cpu.reg.a = 0x20;
+    cpu.reg.b = 0x10;
+    assert_eq!(cpu.reg.b, 0x10);
+    cpu.execute(&mut mmu, Instruction::LD(Target::B, Target::A));
+    assert_eq!(cpu.reg.b, 0x20);
+    cpu.reg.e = 0x6D;
+    cpu.reg.h = 0x0;
+    assert_eq!(cpu.reg.h, 0x0);
+    cpu.execute(&mut mmu, Instruction::LD(Target::H, Target::E));
+    assert_eq!(cpu.reg.h, 0x6D);
+
+    // LD r (HL)
+    cpu.reg.a = 0x33;
+    cpu.reg.set_hl(0x1500);
+    mmu.wb(cpu.reg.hl(), 0x1F);
+    assert_eq!(cpu.reg.a, 0x33);
+    cpu.execute(&mut mmu, Instruction::LD(Target::A, Target::HL));
+    assert_eq!(cpu.reg.a, 0x1F);
+
+    // LD (HL) r
+    cpu.reg.l = 0x7D;
+    mmu.wb(cpu.reg.hl(), 0x17);
+    assert_eq!(mmu.rb(cpu.reg.hl()), 0x17);
+    cpu.execute(&mut mmu, Instruction::LD(Target::HL, Target::L));
+    assert_eq!(mmu.rb(cpu.reg.hl()), 0x7D);
+
+    // LD A (C)
+    cpu.reg.a = 0x52;
+    cpu.reg.c = 0x6C;
+    mmu.wb(0xFF00 | (cpu.reg.c as u16), 0x0F);
+    assert_eq!(cpu.reg.a, 0x52);
+    cpu.execute(&mut mmu, Instruction::LD(Target::A, Target::FFC));
+    assert_eq!(cpu.reg.a, 0x0F);
+
+    // LD (C) A
+    cpu.reg.a = 0x52;
+    cpu.reg.c = 0x40;
+    mmu.wb(0xFF00 | (cpu.reg.c as u16), 0x81);
+    assert_eq!(mmu.rb(0xFF00 | (cpu.reg.c as u16)), 0x81);
+    cpu.execute(&mut mmu, Instruction::LD(Target::FFC, Target::A));
+    assert_eq!(mmu.rb(0xFF00 | (cpu.reg.c as u16)), 0x52);
+}
+
+#[test]
 fn rla() {
     let mut cpu = CPU::new();
     let mut mmu = MMU::new();
@@ -327,8 +376,8 @@ fn add_hl() {
     assert_eq!(cpu.reg.get_flag(Flag::C), false);
 
     cpu.reg.set_hl(0x8A23);
-    cpu.reg.set_de(0x8A23);
-    cpu.execute(&mut mmu, Instruction::ADDHL(Target::DE));
+    cpu.reg.set_bc(0x8A23);
+    cpu.execute(&mut mmu, Instruction::ADDHL(Target::BC));
     assert_eq!(cpu.reg.hl(), 0x1446);
     assert_eq!(cpu.reg.get_flag(Flag::N), false);
     assert_eq!(cpu.reg.get_flag(Flag::H), true);
@@ -511,4 +560,53 @@ fn set() {
     mmu.wb(cpu.reg.hl(), 0x00);
     cpu.execute(&mut mmu, Instruction::SET(2, Target::HL));
     assert_eq!(mmu.rb(cpu.reg.hl()), 0x04);
+}
+
+#[test]
+fn cpl() {
+    let mut cpu = CPU::new();
+    let mut mmu = MMU::new();
+    cpu.reg.a = 0x35;
+    cpu.execute(&mut mmu, Instruction::CPL);
+    assert_eq!(cpu.reg.a, 0xCA);
+    assert_eq!(cpu.reg.get_flag(Flag::N), true);
+    assert_eq!(cpu.reg.get_flag(Flag::H), true);
+}
+
+#[test]
+fn ccf() {
+    let mut cpu = CPU::new();
+    let mut mmu = MMU::new();
+    cpu.reg.set_flag(Flag::C, true);
+    cpu.execute(&mut mmu, Instruction::CCF);
+    assert_eq!(cpu.reg.get_flag(Flag::N), false);
+    assert_eq!(cpu.reg.get_flag(Flag::H), false);
+    assert_eq!(cpu.reg.get_flag(Flag::C), false);
+
+    cpu.reg.set_flag(Flag::C, false);
+    cpu.execute(&mut mmu, Instruction::CCF);
+    assert_eq!(cpu.reg.get_flag(Flag::N), false);
+    assert_eq!(cpu.reg.get_flag(Flag::H), false);
+    assert_eq!(cpu.reg.get_flag(Flag::C), true);
+}
+
+#[test]
+fn scf() {
+    let mut cpu = CPU::new();
+    let mut mmu = MMU::new();
+    cpu.reg.set_flag(Flag::C, true);
+    cpu.reg.set_flag(Flag::N, true);
+    cpu.reg.set_flag(Flag::H, true);
+    cpu.execute(&mut mmu, Instruction::SCF);
+    assert_eq!(cpu.reg.get_flag(Flag::N), false);
+    assert_eq!(cpu.reg.get_flag(Flag::H), false);
+    assert_eq!(cpu.reg.get_flag(Flag::C), true);
+
+    cpu.reg.set_flag(Flag::C, false);
+    cpu.reg.set_flag(Flag::N, false);
+    cpu.reg.set_flag(Flag::H, false);
+    cpu.execute(&mut mmu, Instruction::SCF);
+    assert_eq!(cpu.reg.get_flag(Flag::N), false);
+    assert_eq!(cpu.reg.get_flag(Flag::H), false);
+    assert_eq!(cpu.reg.get_flag(Flag::C), true);
 }

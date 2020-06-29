@@ -364,11 +364,13 @@ impl CPU {
                         self.reg.pc += 1;
                     },
                     (Target::FFIMM8, Target::A) => {
-                        mmu.wb(0xFF00 | (self.get_imm8(mmu) as u16), self.reg.a);
+                        let address: u16 = 0xFF00 | (self.get_imm8(mmu) as u16);
+                        mmu.wb(address, self.reg.a);
                         self.reg.pc += 2;
                     },
                     (Target::FFC, Target::A) => {
-                        mmu.wb(0xFF00 | (self.reg.c as u16), self.reg.a);
+                        let address: u16 = 0xFF00 | (self.reg.c as u16);
+                        mmu.wb(address, self.reg.a);
                         self.reg.pc += 1;
                     },
                     (Target::A, Target::FFIMM8) => {
@@ -405,249 +407,13 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
-            Instruction::XOR(t) => {
-                match t {
-                    Target::A => {
-                        self.reg.a ^= self.reg.a;
-                        self.reg.set_flag(Flag::Z, true);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        self.reg.a ^= self.reg.b;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        self.reg.a ^= self.reg.c;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        self.reg.a ^= self.reg.d;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        self.reg.a ^= self.reg.e;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        self.reg.a ^= self.reg.h;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        self.reg.a ^= self.reg.l;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        self.reg.a ^= at_hl;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.a ^= imm8;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
-                }
-            },
-            Instruction::OR(t) => {
-                match t {
-                    Target::A => {
-                        self.reg.a |= self.reg.a;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        self.reg.a |= self.reg.b;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        self.reg.a |= self.reg.c;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        self.reg.a |= self.reg.d;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        self.reg.a |= self.reg.e;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        self.reg.a |= self.reg.h;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        self.reg.a |= self.reg.l;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        self.reg.a |= at_hl;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.a |= imm8;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.pc += 1;
-                    },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
-                }
-            },
-            Instruction::AND(t) => {
-                match t {
-                    Target::IMM8 => {
-                        self.reg.a &= self.get_imm8(mmu);
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 2;
-                    },
-                    Target::A => {
-                        self.reg.a &= self.reg.a;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        self.reg.a &= self.reg.b;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        self.reg.a &= self.reg.c;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        self.reg.a &= self.reg.d;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        self.reg.a &= self.reg.e;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        self.reg.a &= self.reg.h;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        self.reg.a &= self.reg.l;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        self.reg.a &= at_hl;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
-                }
-            },
             Instruction::INC(t) => {
                 match t {
                     Target::A => {
                         let a = self.reg.a.wrapping_add(1);
                         self.reg.set_flag(Flag::Z, a == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) + 1 > 0x0F);
+                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) == 0x0F);
                         self.reg.a = a;
                         self.reg.pc += 1;
                     },
@@ -655,7 +421,7 @@ impl CPU {
                         let b = self.reg.b.wrapping_add(1);
                         self.reg.set_flag(Flag::Z, b == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (self.reg.b & 0x0F) + 1 > 0x0F);
+                        self.reg.set_flag(Flag::H, (self.reg.b & 0x0F) == 0x0F);
                         self.reg.b = b;
                         self.reg.pc += 1;
                     },
@@ -663,7 +429,7 @@ impl CPU {
                         let c = self.reg.c.wrapping_add(1);
                         self.reg.set_flag(Flag::Z, c == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (self.reg.c & 0x0F) + 1 > 0x0F);
+                        self.reg.set_flag(Flag::H, (self.reg.c & 0x0F) == 0x0F);
                         self.reg.c = c;
                         self.reg.pc += 1;
                     },
@@ -671,7 +437,7 @@ impl CPU {
                         let d = self.reg.d.wrapping_add(1);
                         self.reg.set_flag(Flag::Z, d == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (self.reg.d & 0x0F) + 1 > 0x0F);
+                        self.reg.set_flag(Flag::H, (self.reg.d & 0x0F) == 0x0F);
                         self.reg.d = d;
                         self.reg.pc += 1;
                     },
@@ -679,7 +445,7 @@ impl CPU {
                         let e = self.reg.e.wrapping_add(1);
                         self.reg.set_flag(Flag::Z, e == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (self.reg.e & 0x0F) + 1 > 0x0F);
+                        self.reg.set_flag(Flag::H, (self.reg.e & 0x0F) == 0x0F);
                         self.reg.e = e;
                         self.reg.pc += 1;
                     },
@@ -687,7 +453,7 @@ impl CPU {
                         let h = self.reg.h.wrapping_add(1);
                         self.reg.set_flag(Flag::Z, h == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (self.reg.h & 0x0F) + 1 > 0x0F);
+                        self.reg.set_flag(Flag::H, (self.reg.h & 0x0F) == 0x0F);
                         self.reg.h = h;
                         self.reg.pc += 1;
                     },
@@ -695,7 +461,7 @@ impl CPU {
                         let l = self.reg.l.wrapping_add(1);
                         self.reg.set_flag(Flag::Z, l == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (self.reg.l & 0x0F) + 1 > 0x0F);
+                        self.reg.set_flag(Flag::H, (self.reg.l & 0x0F) == 0x0F);
                         self.reg.l = l;
                         self.reg.pc += 1;
                     },
@@ -720,277 +486,8 @@ impl CPU {
                         let new_hl = at_hl.wrapping_add(1);
                         self.reg.set_flag(Flag::Z, new_hl == 0);
                         self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, (at_hl & 0x0F) + 1 > 0x0F);
+                        self.reg.set_flag(Flag::H, (at_hl & 0x0F) == 0x0F);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.pc += 1;
-                    },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
-                }
-            },
-            Instruction::ADD(t) => {
-                match t {
-                    Target::A => {
-                        let (v, c) = self.reg.a.overflowing_add(self.reg.a);
-                        let hc = (self.reg.a & 0x0F) + (self.reg.a & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        let (v, c) = self.reg.a.overflowing_add(self.reg.b);
-                        let hc = (self.reg.a & 0x0F) + (self.reg.b & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        let (v, c) = self.reg.a.overflowing_add(self.reg.c);
-                        let hc = (self.reg.a & 0x0F) + (self.reg.c & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        let (v, c) = self.reg.a.overflowing_add(self.reg.d);
-                        let hc = (self.reg.a & 0x0F) + (self.reg.d & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        let (v, c) = self.reg.a.overflowing_add(self.reg.e);
-                        let hc = (self.reg.a & 0x0F) + (self.reg.e & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        let (v, c) = self.reg.a.overflowing_add(self.reg.h);
-                        let hc = (self.reg.a & 0x0F) + (self.reg.h & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        let (v, c) = self.reg.a.overflowing_add(self.reg.l);
-                        let hc = (self.reg.a & 0x0F) + (self.reg.l & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        let (v, c) = self.reg.a.overflowing_add(at_hl);
-                        let hc = (self.reg.a & 0x0F) + (at_hl & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        let (v, c) = self.reg.a.overflowing_add(imm8);
-                        let hc = (self.reg.a & 0x0F) + (imm8 & 0x0F) > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 2;
-                    },
-                    Target::SP => {
-                        let imm8 = self.get_imm8(mmu) as i8 as i16 as u16;
-                        let v = self.reg.sp.wrapping_add(imm8);
-                        let hc = (self.reg.sp & 0xF) + (imm8 & 0xF) > 0xF;
-                        let c = (self.reg.sp & 0xFF) + (imm8 & 0xFF) > 0xFF;
-                        self.reg.set_flag(Flag::Z, false);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.sp = v;
-                        self.reg.pc += 2;
-                    }
-                    _ => panic!("Unrecognized instr: {:?}", instr)
-                }
-            },
-            Instruction::ADC(t) => {
-                match t {
-                    Target::A => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_add(self.reg.a);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0xF) + (self.reg.a & 0xF) + cf > 0xF;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_add(self.reg.b);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0xF) + (self.reg.b & 0xF) + cf > 0xF;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_add(self.reg.c);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0xF) + (self.reg.c & 0xF) + cf > 0xF;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_add(self.reg.d);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0xF) + (self.reg.d & 0xF) + cf > 0xF;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_add(self.reg.e);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0xF) + (self.reg.e & 0xF) + cf > 0xF;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_add(self.reg.h);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0xF) + (self.reg.h & 0xF) + cf > 0xF;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_add(self.reg.l);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0xF) + (self.reg.l & 0xF) + cf > 0xF;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let at_hl = mmu.rb(self.reg.hl());
-                        let (_v, c1) = self.reg.a.overflowing_add(at_hl);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0x0F) + (at_hl & 0x0F) + cf > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::IMM8 => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let imm8 = self.get_imm8(mmu);
-                        let (_v, c1) = self.reg.a.overflowing_add(imm8);
-                        let (v, c2) = _v.overflowing_add(cf);
-                        let hc = (self.reg.a & 0x0F) + (imm8 & 0x0F) + cf > 0x0F;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.a = v;
-                        self.reg.pc += 2;
-                    }
-                    _ => panic!("Unrecognized instr: {:?}", instr)
-                }
-            },
-            Instruction::ADDHL(t) => {
-                match t {
-                    Target::BC => {
-                        let bc = self.reg.bc();
-                        let (v, c) = self.reg.hl().overflowing_add(bc);
-                        let hc = (self.reg.hl() & 0x0FFF) + (bc & 0x0FFF) > 0x0FFF;
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_hl(v);
-                        self.reg.pc += 1;
-                    },
-                    Target::DE => {
-                        let de = self.reg.de();
-                        let (v, c) = self.reg.hl().overflowing_add(de);
-                        let hc = (self.reg.hl() & 0x0FFF) + (de & 0x0FFF) > 0x0FFF;
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_hl(v);
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let hl = self.reg.hl();
-                        let (v, c) = self.reg.hl().overflowing_add(hl);
-                        let hc = (self.reg.hl() & 0x0FFF) + (hl & 0x0FFF) > 0x0FFF;
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_hl(v);
-                        self.reg.pc += 1;
-                    },
-                    Target::SP => {
-                        let sp = self.reg.sp;
-                        let (v, c) = self.reg.hl().overflowing_add(sp);
-                        let hc = (self.reg.hl() & 0x0FFF) + (sp & 0x0FFF) > 0x0FFF;
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_hl(v);
                         self.reg.pc += 1;
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
@@ -1082,643 +579,395 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
-            Instruction::SUB(t) => {
-                match t {
-                    Target::A => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.a);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.b);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.c);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.d);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.e);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.h);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.l);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        let (v, c) = self.reg.a.overflowing_sub(at_hl);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
+            Instruction::XOR(t) => {
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
+                    Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => {
                         let imm8 = self.get_imm8(mmu);
-                        let (v, c) = self.reg.a.overflowing_sub(imm8);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.a = v;
                         self.reg.pc += 1;
-                    }
+                        imm8
+                    },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.a ^= operand;
+                self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, false);
+                self.reg.pc += 1;
+            },
+            Instruction::OR(t) => {
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
+                    Target::HL => mmu.rb(self.reg.hl()),
+                    Target::IMM8 => {
+                        let imm8 = self.get_imm8(mmu);
+                        self.reg.pc += 1;
+                        imm8
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                self.reg.a |= operand;
+                self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::C, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.pc += 1;
+            },
+            Instruction::AND(t) => {
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
+                    Target::HL => mmu.rb(self.reg.hl()),
+                    Target::IMM8 => {
+                        let imm8 = self.get_imm8(mmu);
+                        self.reg.pc += 1;
+                        imm8
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                self.reg.a &= operand;
+                self.reg.set_flag(Flag::Z, self.reg.a == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, true);
+                self.reg.set_flag(Flag::C, false);
+                self.reg.pc += 1;
+            },
+            Instruction::ADD(t) => {
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::HL => mmu.rb(self.reg.hl()),
+                    Target::IMM8 => {
+                        let imm8 = self.get_imm8(mmu);
+                        self.reg.pc += 1;
+                        imm8
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                let (v, c) = self.reg.a.overflowing_add(operand);
+                let hc = (self.reg.a & 0x0F) + (operand & 0x0F) > 0x0F;
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.set_flag(Flag::H, hc);
+                self.reg.a = v;
+                self.reg.pc += 1;
+            },
+            Instruction::ADDSP => {
+                let imm8 = self.get_imm8(mmu) as i8 as i16 as u16;
+                let v = self.reg.sp.wrapping_add(imm8);
+                let hc = (self.reg.sp & 0xF) + (imm8 & 0xF) > 0xF;
+                let c = (self.reg.sp & 0xFF) + (imm8 & 0xFF) > 0xFF;
+                self.reg.set_flag(Flag::Z, false);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.set_flag(Flag::H, hc);
+                self.reg.sp = v;
+                self.reg.pc += 2;
+            },
+            Instruction::ADC(t) => {
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::HL => mmu.rb(self.reg.hl()),
+                    Target::IMM8 => {
+                        let imm8 = self.get_imm8(mmu);
+                        self.reg.pc += 1;
+                        imm8
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                let cf = self.reg.get_flag(Flag::C) as u8;
+                let (_v, c1) = self.reg.a.overflowing_add(operand);
+                let (v, c2) = _v.overflowing_add(cf);
+                let hc = (self.reg.a & 0xF) + (operand & 0xF) + cf > 0xF;
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::C, c1 || c2);
+                self.reg.set_flag(Flag::H, hc);
+                self.reg.a = v;
+                self.reg.pc += 1;
+            },
+            Instruction::ADDHL(t) => {
+                let operand = match t {
+                    Target::BC => self.reg.bc(),
+                    Target::DE => self.reg.de(),
+                    Target::HL => self.reg.hl(),
+                    Target::SP => self.reg.sp,
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                let (v, c) = self.reg.hl().overflowing_add(operand);
+                let hc = (self.reg.hl() & 0x0FFF) + (operand & 0x0FFF) > 0x0FFF;
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.set_flag(Flag::H, hc);
+                self.reg.set_hl(v);
+                self.reg.pc += 1;
+            },
+            Instruction::SUB(t) => {
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
+                    Target::HL => mmu.rb(self.reg.hl()),
+                    Target::IMM8 => {
+                        let imm8 = self.get_imm8(mmu);
+                        self.reg.pc += 1;
+                        imm8
+                    },
+                    _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                let (v, c) = self.reg.a.overflowing_sub(operand);
+                let hc = (self.reg.a & 0x0F) < (operand & 0x0F);
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, true);
+                self.reg.set_flag(Flag::H, hc);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.a = v;
+                self.reg.pc += 1;
             },
             Instruction::SBC(t) => {
-                match t {
-                    Target::A => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(self.reg.a);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(self.reg.b);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(self.reg.c);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(self.reg.d);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(self.reg.e);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(self.reg.h);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(self.reg.l);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(at_hl);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
-                        self.reg.pc += 1;
-                    },
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
+                    Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => {
                         let imm8 = self.get_imm8(mmu);
-                        let cf = self.reg.get_flag(Flag::C) as u8;
-                        let (_v, c1) = self.reg.a.overflowing_sub(imm8);
-                        let (v, c2) = _v.overflowing_sub(cf);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F) + cf;
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c1 || c2);
-                        self.reg.a = v;
                         self.reg.pc += 1;
+                        imm8
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                let cf = self.reg.get_flag(Flag::C) as u8;
+                let (_v, c1) = self.reg.a.overflowing_sub(operand);
+                let (v, c2) = _v.overflowing_sub(cf);
+                let hc = (self.reg.a & 0x0F) < (operand & 0x0F) + cf;
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, true);
+                self.reg.set_flag(Flag::H, hc);
+                self.reg.set_flag(Flag::C, c1 || c2);
+                self.reg.a = v;
+                self.reg.pc += 1;
             },
             Instruction::CP(t) => {
-                match t {
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
+                    Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => {
                         let imm8 = self.get_imm8(mmu);
-                        let (v, c) = self.reg.a.overflowing_sub(imm8);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 2;
-                    },
-                    Target::A => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.a);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c);
                         self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.b);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.c);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.d);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.e);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.h);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        let (v, c) = self.reg.a.overflowing_sub(self.reg.l);
-                        let hc = (self.reg.a & 0x0F) < (v & 0x0F);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, hc);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        let (v, c) = self.reg.a.overflowing_sub(at_hl);
-                        self.reg.set_flag(Flag::Z, v == 0);
-                        self.reg.set_flag(Flag::N, true);
-                        self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) < (v & 0x0F));
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        imm8
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                let (v, c) = self.reg.a.overflowing_sub(operand);
+                let hc = (self.reg.a & 0x0F) < (operand & 0x0F);
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, true);
+                self.reg.set_flag(Flag::H, hc);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.pc += 1;
             },
             Instruction::BIT(i, t) => {
-                match t {
-                    Target::A => {
-                        self.reg.set_flag(Flag::Z, self.reg.a & (1 << i) == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        self.reg.set_flag(Flag::Z, self.reg.b & (1 << i) == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        self.reg.set_flag(Flag::Z, self.reg.c & (1 << i) == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        self.reg.set_flag(Flag::Z, self.reg.d & (1 << i) == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        self.reg.set_flag(Flag::Z, self.reg.e & (1 << i) == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        self.reg.set_flag(Flag::Z, self.reg.h & (1 << i) == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        self.reg.set_flag(Flag::Z, self.reg.l & (1 << i) == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        self.reg.set_flag(Flag::Z, at_hl & (1 << i) == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, true);
-                        self.reg.pc += 1;
-                    },
+                let operand = match t {
+                    Target::A  => self.reg.a,
+                    Target::B  => self.reg.b,
+                    Target::C  => self.reg.c,
+                    Target::D  => self.reg.d,
+                    Target::E  => self.reg.e,
+                    Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
+                    Target::HL => mmu.rb(self.reg.hl()),
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, operand & (1 << i) == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, true);
+                self.reg.pc += 1;
             },
             Instruction::RES(i , t) => {
                 match t {
-                    Target::A => {
-                        self.reg.a &= !(1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        self.reg.b &= !(1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        self.reg.c &= !(1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        self.reg.d &= !(1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        self.reg.e &= !(1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        self.reg.h &= !(1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        self.reg.l &= !(1 << i);
-                        self.reg.pc += 1;
-                    },
+                    Target::A  => self.reg.a &= !(1 << i),
+                    Target::B  => self.reg.b &= !(1 << i),
+                    Target::C  => self.reg.c &= !(1 << i),
+                    Target::D  => self.reg.d &= !(1 << i),
+                    Target::E  => self.reg.e &= !(1 << i),
+                    Target::H  => self.reg.h &= !(1 << i),
+                    Target::L  => self.reg.l &= !(1 << i),
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
-                        let new_hl = at_hl & !(1 << i);
-                        mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.pc += 1;
+                        mmu.wb(self.reg.hl(), at_hl & !(1 << i));
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
+
+                self.reg.pc += 1;
             },
             Instruction::SET(i, t) => {
                 match t {
-                    Target::A => {
-                        self.reg.a |= (1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::B => {
-                        self.reg.b |= (1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::C => {
-                        self.reg.c |= (1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::D => {
-                        self.reg.d |= (1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::E => {
-                        self.reg.e |= (1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::H => {
-                        self.reg.h |= (1 << i);
-                        self.reg.pc += 1;
-                    },
-                    Target::L => {
-                        self.reg.l |= (1 << i);
-                        self.reg.pc += 1;
-                    },
+                    Target::A  => self.reg.a |= (1 << i),
+                    Target::B  => self.reg.b |= (1 << i),
+                    Target::C  => self.reg.c |= (1 << i),
+                    Target::D  => self.reg.d |= (1 << i),
+                    Target::E  => self.reg.e |= (1 << i),
+                    Target::H  => self.reg.h |= (1 << i),
+                    Target::L  => self.reg.l |= (1 << i),
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
-                        let new_hl = at_hl | (1 << i);
-                        mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.pc += 1;
+                        mmu.wb(self.reg.hl(), at_hl | (1 << i));
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
+
+                self.reg.pc += 1;
             },
             Instruction::JR(f) => {
-                match f {
-                    JumpFlag::NZ => {
-                        let mut pc = self.reg.pc + 2;
-                        if !self.reg.get_flag(Flag::Z) {
-                            let n = self.get_imm8(mmu) as i8;
-                            pc = pc.wrapping_add(n as u16);
-                        }
-                        self.reg.pc = pc;
-                    },
-                    JumpFlag::NC => {
-                        let mut pc = self.reg.pc + 2;
-                        if !self.reg.get_flag(Flag::C) {
-                            let n = self.get_imm8(mmu) as i8;
-                            pc = pc.wrapping_add(n as u16);
-                        }
-                        self.reg.pc = pc;
-                    },
-                    JumpFlag::Z => {
-                        let mut pc = self.reg.pc + 2;
-                        if self.reg.get_flag(Flag::Z) {
-                            let n = self.get_imm8(mmu) as i8;
-                            pc = pc.wrapping_add(n as u16);
-                        }
-                        self.reg.pc = pc;
-                    },
-                    JumpFlag::C => {
-                        let mut pc = self.reg.pc + 2;
-                        if self.reg.get_flag(Flag::C) {
-                            let n = self.get_imm8(mmu) as i8;
-                            pc = pc.wrapping_add(n as u16);
-                        }
-                        self.reg.pc = pc;
-                    },
-                    JumpFlag::A => {
-                        let mut pc = self.reg.pc + 2;
-                        let n = self.get_imm8(mmu) as i8;
-                        self.reg.pc = pc.wrapping_add(n as u16);
-                    },
+                let should_jump = match f {
+                    JumpFlag::NZ => !self.reg.get_flag(Flag::Z),
+                    JumpFlag::NC => !self.reg.get_flag(Flag::C),
+                    JumpFlag::Z => self.reg.get_flag(Flag::Z),
+                    JumpFlag::C => self.reg.get_flag(Flag::C),
+                    JumpFlag::A => true,
                     _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                let mut pc = self.reg.pc + 2;
+                if should_jump {
+                    let n = self.get_imm8(mmu) as i8;
+                    pc = pc.wrapping_add(n as u16);
                 }
+                self.reg.pc = pc;
             },
             Instruction::JP(f) => {
-                match f {
-                    JumpFlag::AtHL => self.reg.pc = self.reg.hl(),
-                    JumpFlag::A => {
-                        let jump = self.get_imm16(mmu);
-                        self.reg.pc = jump;
+                let mut jump = self.get_imm16(mmu);
+                let should_jump = match f {
+                    JumpFlag::NZ => !self.reg.get_flag(Flag::Z),
+                    JumpFlag::NC => !self.reg.get_flag(Flag::C),
+                    JumpFlag::Z => self.reg.get_flag(Flag::Z),
+                    JumpFlag::C => self.reg.get_flag(Flag::C),
+                    JumpFlag::A => true,
+                    JumpFlag::AtHL => {
+                        jump = self.reg.hl();
+                        true
                     },
-                    JumpFlag::Z => {
-                        let mut pc = self.reg.pc + 3;
-                        if self.reg.get_flag(Flag::Z) {
-                            pc = self.get_imm16(mmu);
-                        }
-                        self.reg.pc = pc;
-                    },
-                    JumpFlag::C => {
-                        let mut pc = self.reg.pc + 3;
-                        if self.reg.get_flag(Flag::C) {
-                            pc = self.get_imm16(mmu);
-                        }
-                        self.reg.pc = pc;
-                    },
-                    JumpFlag::NZ => {
-                        let mut pc = self.reg.pc + 3;
-                        if !self.reg.get_flag(Flag::Z) {
-                            pc = self.get_imm16(mmu);
-                        }
-                        self.reg.pc = pc;
-                    },
-                    JumpFlag::NC => {
-                        let mut pc = self.reg.pc + 3;
-                        if !self.reg.get_flag(Flag::C) {
-                            pc = self.get_imm16(mmu);
-                        }
-                        self.reg.pc = pc;
-                    }
+                };
+
+                if should_jump {
+                    self.reg.pc = jump;
+                } else {
+                    self.reg.pc += 3;
                 }
             },
             Instruction::CALL(f) => {
-                match f {
-                    JumpFlag::A => {
-                        let pc = self.reg.pc + 3;
-                        self.push(mmu, pc);
-                        self.reg.sp -= 2;
-                        self.reg.pc = self.get_imm16(mmu);
-                    },
-                    JumpFlag::NZ => {
-                        let pc = self.reg.pc + 3;
-                        if !self.reg.get_flag(Flag::Z) {
-                            self.push(mmu, pc);
-                            self.reg.sp -= 2;
-                            self.reg.pc = self.get_imm16(mmu);
-                        } else {
-                            self.reg.pc = pc;
-                        }
-                    },
-                    JumpFlag::Z => {
-                        let pc = self.reg.pc + 3;
-                        if self.reg.get_flag(Flag::Z) {
-                            self.push(mmu, pc);
-                            self.reg.sp -= 2;
-                            self.reg.pc = self.get_imm16(mmu);
-                        } else {
-                            self.reg.pc = pc;
-                        }
-                    },
-                    JumpFlag::NC => {
-                        let pc = self.reg.pc + 3;
-                        if !self.reg.get_flag(Flag::C) {
-                            self.push(mmu, pc);
-                            self.reg.sp -= 2;
-                            self.reg.pc = self.get_imm16(mmu);
-                        } else {
-                            self.reg.pc = pc;
-                        }
-                    },
-                    JumpFlag::C => {
-                        let pc = self.reg.pc + 3;
-                        if self.reg.get_flag(Flag::C) {
-                            self.push(mmu, pc);
-                            self.reg.sp -= 2;
-                            self.reg.pc = self.get_imm16(mmu);
-                        } else {
-                            self.reg.pc = pc;
-                        }
-                    },
+                let should_jump = match f {
+                    JumpFlag::NZ => !self.reg.get_flag(Flag::Z),
+                    JumpFlag::NC => !self.reg.get_flag(Flag::C),
+                    JumpFlag::Z => self.reg.get_flag(Flag::Z),
+                    JumpFlag::C => self.reg.get_flag(Flag::C),
+                    JumpFlag::A => true,
                     _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                let pc = self.reg.pc + 3;
+                if should_jump {
+                    self.push(mmu, pc);
+                    self.reg.sp -= 2;
+                    self.reg.pc = self.get_imm16(mmu);
+                } else {
+                    self.reg.pc = pc;
                 }
             },
             Instruction::RET(f) => {
-                match f {
-                    JumpFlag::A => {
-                        self.reg.pc = self.pop(mmu);
-                        self.reg.sp += 2;
-                    },
-                    JumpFlag::NZ => {
-                        self.reg.pc += 1;
-                        if !self.reg.get_flag(Flag::Z) {
-                            self.reg.pc = self.pop(mmu);
-                            self.reg.sp += 2;
-                        }
-                    },
-                    JumpFlag::Z => {
-                        self.reg.pc += 1;
-                        if self.reg.get_flag(Flag::Z) {
-                            self.reg.pc = self.pop(mmu);
-                            self.reg.sp += 2;
-                        }
-                    },
-                    JumpFlag::NC => {
-                        self.reg.pc += 1;
-                        if !self.reg.get_flag(Flag::C) {
-                            self.reg.pc = self.pop(mmu);
-                            self.reg.sp += 2;
-                        }
-                    },
-                    JumpFlag::C => {
-                        self.reg.pc += 1;
-                        if self.reg.get_flag(Flag::C) {
-                            self.reg.pc = self.pop(mmu);
-                            self.reg.sp += 2;
-                        }
-                    },
+                let should_jump = match f {
+                    JumpFlag::NZ => !self.reg.get_flag(Flag::Z),
+                    JumpFlag::NC => !self.reg.get_flag(Flag::C),
+                    JumpFlag::Z => self.reg.get_flag(Flag::Z),
+                    JumpFlag::C => self.reg.get_flag(Flag::C),
+                    JumpFlag::A => true,
                     _ => panic!("Unrecognized instr: {:?}", instr)
+                };
+
+                self.reg.pc += 1;
+                if should_jump {
+                    self.reg.pc = self.pop(mmu);
+                    self.reg.sp += 2;
                 }
-            }
+            },
             Instruction::PUSH(t) => {
                 match t {
-                    Target::AF => {
-                        self.push(mmu, self.reg.af());
-                        self.reg.sp -= 2;
-                        self.reg.pc += 1;
-                    },
-                    Target::BC => {
-                        self.push(mmu, self.reg.bc());
-                        self.reg.sp -= 2;
-                        self.reg.pc += 1;
-                    },
-                    Target::DE => {
-                        self.push(mmu, self.reg.de());
-                        self.reg.sp -= 2;
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        self.push(mmu, self.reg.hl());
-                        self.reg.sp -= 2;
-                        self.reg.pc += 1;
-                    },
+                    Target::AF => self.push(mmu, self.reg.af()),
+                    Target::BC => self.push(mmu, self.reg.bc()),
+                    Target::DE => self.push(mmu, self.reg.de()),
+                    Target::HL => self.push(mmu, self.reg.hl()),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
+
+                self.reg.sp -= 2;
+                self.reg.pc += 1;
             },
             Instruction::POP(t) => {
                 match t {
-                    Target::AF => {
-                        self.reg.set_af(self.pop(mmu));
-                        self.reg.sp += 2;
-                        self.reg.pc += 1;
-                    },
-                    Target::BC => {
-                        self.reg.set_bc(self.pop(mmu));
-                        self.reg.sp += 2;
-                        self.reg.pc += 1;
-                    },
-                    Target::DE => {
-                        self.reg.set_de(self.pop(mmu));
-                        self.reg.sp += 2;
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        self.reg.set_hl(self.pop(mmu));
-                        self.reg.sp += 2;
-                        self.reg.pc += 1;
-                    },
+                    Target::AF => self.reg.set_af(self.pop(mmu)),
+                    Target::BC => self.reg.set_bc(self.pop(mmu)),
+                    Target::DE => self.reg.set_de(self.pop(mmu)),
+                    Target::HL => self.reg.set_hl(self.pop(mmu)),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
+
+                self.reg.sp += 2;
+                self.reg.pc += 1;
             },
             Instruction::RST(t) => {
                 self.push(mmu, self.reg.pc + 1);
@@ -1726,565 +975,377 @@ impl CPU {
                 self.reg.pc = t as u16;
             },
             Instruction::RL(t) => {
-                match t {
+                let cf = self.reg.get_flag(Flag::C) as u8;
+                let (v, c) = match t {
                     Target::A => {
                         let c = (self.reg.a & 0x80) != 0;
-                        self.reg.a = (self.reg.a << 1) + (self.reg.get_flag(Flag::C) as u8);
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.a = (self.reg.a << 1) + cf;
+                        (self.reg.a, c)
                     },
                     Target::B => {
                         let c = (self.reg.b & 0x80) != 0;
-                        self.reg.b = (self.reg.b << 1) + (self.reg.get_flag(Flag::C) as u8);
-                        self.reg.set_flag(Flag::Z, self.reg.b == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.b = (self.reg.b << 1) + cf;
+                        (self.reg.b, c)
                     },
                     Target::C => {
                         let c = (self.reg.c & 0x80) != 0;
-                        self.reg.c = (self.reg.c << 1) + (self.reg.get_flag(Flag::C) as u8);
-                        self.reg.set_flag(Flag::Z, self.reg.c == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.c = (self.reg.c << 1) + cf;
+                        (self.reg.c, c)
                     },
                     Target::D => {
                         let c = (self.reg.d & 0x80) != 0;
-                        self.reg.d = (self.reg.d << 1) + (self.reg.get_flag(Flag::C) as u8);
-                        self.reg.set_flag(Flag::Z, self.reg.d == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.d = (self.reg.d << 1) + cf;
+                        (self.reg.d, c)
                     },
                     Target::E => {
                         let c = (self.reg.e & 0x80) != 0;
-                        self.reg.e = (self.reg.e << 1) + (self.reg.get_flag(Flag::C) as u8);
-                        self.reg.set_flag(Flag::Z, self.reg.e == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.e = (self.reg.e << 1) + cf;
+                        (self.reg.e, c)
                     },
                     Target::H => {
                         let c = (self.reg.h & 0x80) != 0;
-                        self.reg.h = (self.reg.h << 1) + (self.reg.get_flag(Flag::C) as u8);
-                        self.reg.set_flag(Flag::Z, self.reg.h == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.h = (self.reg.h << 1) + cf;
+                        (self.reg.h, c)
                     },
                     Target::L => {
                         let c = (self.reg.l & 0x80) != 0;
-                        self.reg.l = (self.reg.l << 1) + (self.reg.get_flag(Flag::C) as u8);
-                        self.reg.set_flag(Flag::Z, self.reg.l == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.l = (self.reg.l << 1) + cf;
+                        (self.reg.l, c)
                     },
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x80) != 0;
-                        let new_hl = (at_hl << 1) + (self.reg.get_flag(Flag::C) as u8);
-                        self.reg.set_flag(Flag::Z, new_hl == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
+                        let new_hl = (at_hl << 1) + cf;
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.pc += 1;
-                    },
+                        (new_hl, c)
+                    }
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.pc += 1;
             },
             Instruction::RLC(t) => {
-                match t {
+                let (v, c) = match t {
                     Target::A => {
                         let c = (self.reg.a & 0x80) != 0;
-                        self.reg.a = (self.reg.a << 1) | c as u8;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.a = (self.reg.a << 1) + c as u8;
+                        (self.reg.a, c)
                     },
                     Target::B => {
                         let c = (self.reg.b & 0x80) != 0;
-                        self.reg.b = (self.reg.b << 1) | c as u8;
-                        self.reg.set_flag(Flag::Z, self.reg.b == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.b = (self.reg.b << 1) + c as u8;
+                        (self.reg.b, c)
                     },
                     Target::C => {
                         let c = (self.reg.c & 0x80) != 0;
-                        self.reg.c = (self.reg.c << 1) | c as u8;
-                        self.reg.set_flag(Flag::Z, self.reg.c == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.c = (self.reg.c << 1) + c as u8;
+                        (self.reg.c, c)
                     },
                     Target::D => {
                         let c = (self.reg.d & 0x80) != 0;
-                        self.reg.d = (self.reg.d << 1) | c as u8;
-                        self.reg.set_flag(Flag::Z, self.reg.d == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.d = (self.reg.d << 1) + c as u8;
+                        (self.reg.d, c)
                     },
                     Target::E => {
                         let c = (self.reg.e & 0x80) != 0;
-                        self.reg.e = (self.reg.e << 1) | c as u8;
-                        self.reg.set_flag(Flag::Z, self.reg.e == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.e = (self.reg.e << 1) + c as u8;
+                        (self.reg.e, c)
                     },
                     Target::H => {
                         let c = (self.reg.h & 0x80) != 0;
-                        self.reg.h = (self.reg.h << 1) | c as u8;
-                        self.reg.set_flag(Flag::Z, self.reg.h == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.h = (self.reg.h << 1) + c as u8;
+                        (self.reg.h, c)
                     },
                     Target::L => {
                         let c = (self.reg.l & 0x80) != 0;
-                        self.reg.l = (self.reg.l << 1) | c as u8;
-                        self.reg.set_flag(Flag::Z, self.reg.l == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.l = (self.reg.l << 1) + c as u8;
+                        (self.reg.l, c)
                     },
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x80) != 0;
                         let new_hl = (at_hl << 1) + c as u8;
-                        self.reg.set_flag(Flag::Z, new_hl == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.pc += 1;
+                        (new_hl, c)
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.pc += 1;
             },
             Instruction::RRC(t) => {
-                match t {
+                let (v, c) = match t {
                     Target::A => {
                         let c = (self.reg.a & 0x01) != 0;
-                        self.reg.a = ((c as u8) << 7) | (self.reg.a >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.a = self.reg.a.rotate_right(1);
+                        (self.reg.a, c)
                     },
                     Target::B => {
                         let c = (self.reg.b & 0x01) != 0;
-                        self.reg.b = ((c as u8) << 7) | (self.reg.b >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.b == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.b = self.reg.b.rotate_right(1);
+                        (self.reg.b, c)
                     },
                     Target::C => {
                         let c = (self.reg.c & 0x01) != 0;
-                        self.reg.c = ((c as u8) << 7) | (self.reg.c >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.c == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.c = self.reg.c.rotate_right(1);
+                        (self.reg.c, c)
                     },
                     Target::D => {
                         let c = (self.reg.d & 0x01) != 0;
-                        self.reg.d = ((c as u8) << 7) | (self.reg.d >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.d == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.d = self.reg.d.rotate_right(1);
+                        (self.reg.d, c)
                     },
                     Target::E => {
                         let c = (self.reg.e & 0x01) != 0;
-                        self.reg.e = ((c as u8) << 7) | (self.reg.e >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.e == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.e = self.reg.e.rotate_right(1);
+                        (self.reg.e, c)
                     },
                     Target::H => {
                         let c = (self.reg.h & 0x01) != 0;
-                        self.reg.h = ((c as u8) << 7) | (self.reg.h >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.h == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.h = self.reg.h.rotate_right(1);
+                        (self.reg.h, c)
                     },
                     Target::L => {
                         let c = (self.reg.l & 0x01) != 0;
-                        self.reg.l = ((c as u8) << 7) | (self.reg.l >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.l == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        self.reg.l = self.reg.l.rotate_right(1);
+                        (self.reg.l, c)
                     },
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x01) != 0;
-                        let new_hl = ((c as u8) << 7) | (at_hl >> 1);
+                        let new_hl = at_hl.rotate_right(1);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.set_flag(Flag::Z, new_hl == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (new_hl, c)
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.pc += 1;
             },
             Instruction::RR(t) => {
-                match t {
+                let cf = self.reg.get_flag(Flag::C);
+                let (v, c) = match t {
                     Target::A => {
                         let c = (self.reg.a & 0x01) != 0;
-                        let cf = self.reg.get_flag(Flag::C);
                         self.reg.a = ((cf as u8) << 7) | (self.reg.a >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.a, c)
                     },
                     Target::B => {
                         let c = (self.reg.b & 0x01) != 0;
-                        let cf = self.reg.get_flag(Flag::C);
                         self.reg.b = ((cf as u8) << 7) | (self.reg.b >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.b == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.b, c)
                     },
                     Target::C => {
                         let c = (self.reg.c & 0x01) != 0;
-                        let cf = self.reg.get_flag(Flag::C);
                         self.reg.c = ((cf as u8) << 7) | (self.reg.c >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.c == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.c, c)
                     },
                     Target::D => {
                         let c = (self.reg.d & 0x01) != 0;
-                        let cf = self.reg.get_flag(Flag::C);
                         self.reg.d = ((cf as u8) << 7) | (self.reg.d >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.d == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.d, c)
                     },
                     Target::E => {
                         let c = (self.reg.e & 0x01) != 0;
-                        let cf = self.reg.get_flag(Flag::C);
                         self.reg.e = ((cf as u8) << 7) | (self.reg.e >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.e == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.e, c)
                     },
                     Target::H => {
                         let c = (self.reg.h & 0x01) != 0;
-                        let cf = self.reg.get_flag(Flag::C);
                         self.reg.h = ((cf as u8) << 7) | (self.reg.h >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.h == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.h, c)
                     },
                     Target::L => {
                         let c = (self.reg.l & 0x01) != 0;
-                        let cf = self.reg.get_flag(Flag::C);
                         self.reg.l = ((cf as u8) << 7) | (self.reg.l >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.l == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.l, c)
                     },
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x01) != 0;
-                        let cf = self.reg.get_flag(Flag::C);
                         let new_hl = ((cf as u8) << 7) | (at_hl >> 1);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.set_flag(Flag::Z, new_hl == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (new_hl, c)
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.pc += 1;
             },
             Instruction::SLA(t) => {
-                match t {
+                let (v, c) = match t {
                     Target::A => {
                         let c = (self.reg.a & 0x80) != 0;
                         self.reg.a = self.reg.a << 1;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.a, c)
                     },
                     Target::B => {
                         let c = (self.reg.b & 0x80) != 0;
                         self.reg.b = self.reg.b << 1;
-                        self.reg.set_flag(Flag::Z, self.reg.b == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.b, c)
                     },
                     Target::C => {
                         let c = (self.reg.c & 0x80) != 0;
                         self.reg.c = self.reg.c << 1;
-                        self.reg.set_flag(Flag::Z, self.reg.c == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.c, c)
                     },
                     Target::D => {
                         let c = (self.reg.d & 0x80) != 0;
                         self.reg.d = self.reg.d << 1;
-                        self.reg.set_flag(Flag::Z, self.reg.d == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.d, c)
                     },
                     Target::E => {
                         let c = (self.reg.e & 0x80) != 0;
                         self.reg.e = self.reg.e << 1;
-                        self.reg.set_flag(Flag::Z, self.reg.e == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.e, c)
                     },
                     Target::H => {
                         let c = (self.reg.h & 0x80) != 0;
                         self.reg.h = self.reg.h << 1;
-                        self.reg.set_flag(Flag::Z, self.reg.h == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.h, c)
                     },
                     Target::L => {
                         let c = (self.reg.l & 0x80) != 0;
                         self.reg.l = self.reg.l << 1;
-                        self.reg.set_flag(Flag::Z, self.reg.l == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.l, c)
                     },
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x80) != 0;
-                        let new_hl = at_hl << 1;
+                        let new_hl = (at_hl << 1);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.set_flag(Flag::Z, new_hl == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (new_hl, c)
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.pc += 1;
             },
             Instruction::SRA(t) => {
-                match t {
+                let (v, c) = match t {
                     Target::A => {
                         let c = (self.reg.a & 0x01) != 0;
                         self.reg.a = (self.reg.a & 0x80) | (self.reg.a >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.a, c)
                     },
                     Target::B => {
                         let c = (self.reg.b & 0x01) != 0;
                         self.reg.b = (self.reg.b & 0x80) | (self.reg.b >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.b == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.b, c)
                     },
                     Target::C => {
                         let c = (self.reg.c & 0x01) != 0;
                         self.reg.c = (self.reg.c & 0x80) | (self.reg.c >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.c == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.c, c)
                     },
                     Target::D => {
                         let c = (self.reg.d & 0x01) != 0;
                         self.reg.d = (self.reg.d & 0x80) | (self.reg.d >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.d == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.d, c)
                     },
                     Target::E => {
                         let c = (self.reg.e & 0x01) != 0;
                         self.reg.e = (self.reg.e & 0x80) | (self.reg.e >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.e == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.e, c)
                     },
                     Target::H => {
                         let c = (self.reg.h & 0x01) != 0;
                         self.reg.h = (self.reg.h & 0x80) | (self.reg.h >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.h == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.h, c)
                     },
                     Target::L => {
                         let c = (self.reg.l & 0x01) != 0;
                         self.reg.l = (self.reg.l & 0x80) | (self.reg.l >> 1);
-                        self.reg.set_flag(Flag::Z, self.reg.l == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.l, c)
                     },
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x01) != 0;
                         let new_hl = (at_hl & 0x80) | (at_hl >> 1);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.set_flag(Flag::Z, new_hl == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (new_hl, c)
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.pc += 1;
             },
             Instruction::SRL(t) => {
-                match t {
+                let (v, c) = match t {
                     Target::A => {
                         let c = (self.reg.a & 0x01) != 0;
                         self.reg.a = self.reg.a >> 1;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.a, c)
                     },
                     Target::B => {
                         let c = (self.reg.b & 0x01) != 0;
                         self.reg.b = self.reg.b >> 1;
-                        self.reg.set_flag(Flag::Z, self.reg.b == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.b, c)
                     },
                     Target::C => {
                         let c = (self.reg.c & 0x01) != 0;
                         self.reg.c = self.reg.c >> 1;
-                        self.reg.set_flag(Flag::Z, self.reg.c == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.c, c)
                     },
                     Target::D => {
                         let c = (self.reg.d & 0x01) != 0;
                         self.reg.d = self.reg.d >> 1;
-                        self.reg.set_flag(Flag::Z, self.reg.d == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.d, c)
                     },
                     Target::E => {
                         let c = (self.reg.e & 0x01) != 0;
                         self.reg.e = self.reg.e >> 1;
-                        self.reg.set_flag(Flag::Z, self.reg.e == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.e, c)
                     },
                     Target::H => {
                         let c = (self.reg.h & 0x01) != 0;
                         self.reg.h = self.reg.h >> 1;
-                        self.reg.set_flag(Flag::Z, self.reg.h == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.h, c)
                     },
                     Target::L => {
                         let c = (self.reg.l & 0x01) != 0;
                         self.reg.l = self.reg.l >> 1;
-                        self.reg.set_flag(Flag::Z, self.reg.l == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (self.reg.l, c)
                     },
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x01) != 0;
-                        let new_hl = at_hl >> 1;
+                        let new_hl = (at_hl >> 1);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.set_flag(Flag::Z, new_hl == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, c);
-                        self.reg.pc += 1;
+                        (new_hl, c)
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, c);
+                self.reg.pc += 1;
             },
             Instruction::RLCA => {
                 let c = (self.reg.a & 0x80) != 0;
@@ -2297,7 +1358,7 @@ impl CPU {
             },
             Instruction::RLA => {
                 let c = (self.reg.a & 0x80) != 0;
-                self.reg.a = (self.reg.a << 1) + (self.reg.get_flag(Flag::C) as u8);
+                self.reg.a = (self.reg.a << 1) | (self.reg.get_flag(Flag::C) as u8);
                 self.reg.set_flag(Flag::Z, false);
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
@@ -2324,91 +1385,56 @@ impl CPU {
                 self.reg.pc += 1;
             },
             Instruction::SWAP(t) => {
-                match t {
+                let v = match t {
                     Target::A => {
-                        let hi = (self.reg.a & 0x0F) << 4;
-                        let lo = (self.reg.a & 0xF0) >> 4;
-                        self.reg.a = hi | lo;
-                        self.reg.set_flag(Flag::Z, self.reg.a == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
+                        let v = ((self.reg.a & 0x0F) << 4) | ((self.reg.a & 0xF0) >> 4);
+                        self.reg.a = v;
+                        v
                     },
                     Target::B => {
-                        let hi = (self.reg.b & 0x0F) << 4;
-                        let lo = (self.reg.b & 0xF0) >> 4;
-                        self.reg.b = hi | lo;
-                        self.reg.set_flag(Flag::Z, self.reg.b == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
+                        let v = ((self.reg.b & 0x0F) << 4) | ((self.reg.b & 0xF0) >> 4);
+                        self.reg.b = v;
+                        v
                     },
                     Target::C => {
-                        let hi = (self.reg.c & 0x0F) << 4;
-                        let lo = (self.reg.c & 0xF0) >> 4;
-                        self.reg.c = hi | lo;
-                        self.reg.set_flag(Flag::Z, self.reg.c == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
+                        let v = ((self.reg.c & 0x0F) << 4) | ((self.reg.c & 0xF0) >> 4);
+                        self.reg.c = v;
+                        v
                     },
                     Target::D => {
-                        let hi = (self.reg.d & 0x0F) << 4;
-                        let lo = (self.reg.d & 0xF0) >> 4;
-                        self.reg.d = hi | lo;
-                        self.reg.set_flag(Flag::Z, self.reg.d == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
+                        let v = ((self.reg.d & 0x0F) << 4) | ((self.reg.d & 0xF0) >> 4);
+                        self.reg.d = v;
+                        v
                     },
                     Target::E => {
-                        let hi = (self.reg.e & 0x0F) << 4;
-                        let lo = (self.reg.e & 0xF0) >> 4;
-                        self.reg.e = hi | lo;
-                        self.reg.set_flag(Flag::Z, self.reg.e == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
+                        let v = ((self.reg.e & 0x0F) << 4) | ((self.reg.e & 0xF0) >> 4);
+                        self.reg.e = v;
+                        v
                     },
                     Target::H => {
-                        let hi = (self.reg.h & 0x0F) << 4;
-                        let lo = (self.reg.h & 0xF0) >> 4;
-                        self.reg.h = hi | lo;
-                        self.reg.set_flag(Flag::Z, self.reg.h == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
+                        let v = ((self.reg.h & 0x0F) << 4) | ((self.reg.h & 0xF0) >> 4);
+                        self.reg.h = v;
+                        v
                     },
                     Target::L => {
-                        let hi = (self.reg.l & 0x0F) << 4;
-                        let lo = (self.reg.l & 0xF0) >> 4;
-                        self.reg.l = hi | lo;
-                        self.reg.set_flag(Flag::Z, self.reg.l == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
+                        let v = ((self.reg.l & 0x0F) << 4) | ((self.reg.l & 0xF0) >> 4);
+                        self.reg.l = v;
+                        v
                     },
                     Target::HL => {
-                        let at_hl = mmu.rb(self.reg.hl());
-                        let hi = (at_hl & 0x0F) << 4;
-                        let lo = (at_hl & 0xF0) >> 4;
-                        let new_hl = hi | lo;
-                        mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.set_flag(Flag::Z, new_hl == 0);
-                        self.reg.set_flag(Flag::N, false);
-                        self.reg.set_flag(Flag::H, false);
-                        self.reg.set_flag(Flag::C, false);
-                        self.reg.pc += 1;
-                    },
+                        let new_hl = mmu.rb(self.reg.hl()).swap_bytes();
+                        let v = ((new_hl & 0x0F) << 4) | ((new_hl & 0xF0) >> 4);
+                        mmu.wb(self.reg.hl(), v);
+                        v
+                    }
                     _ => panic!("Unrecognized instr: {:?}", instr)
-                }
+                };
+
+                self.reg.set_flag(Flag::Z, v == 0);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
+                self.reg.set_flag(Flag::C, false);
+                self.reg.pc += 1;
             },
             Instruction::CPL => {
                 self.reg.a = !self.reg.a;
@@ -2417,44 +1443,44 @@ impl CPU {
                 self.reg.pc += 1;
             },
             Instruction::SCF => {
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, true);
                 self.reg.pc += 1;
             },
             Instruction::CCF => {
                 let c_flag = self.reg.get_flag(Flag::C);
+                self.reg.set_flag(Flag::N, false);
+                self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, !c_flag);
                 self.reg.pc += 1;
-            }
+            },
             Instruction::DAA => {
                 let c_flag = self.reg.get_flag(Flag::C);
                 let h_flag = self.reg.get_flag(Flag::H);
                 let n_flag = self.reg.get_flag(Flag::N);
 
                 let mut carry = false;
-                let mut adjust = 0;
-                let a = self.reg.a;
+                let mut a = self.reg.a;
 
                 if !n_flag {
-                    if h_flag || (a & 0x0F) > 0x09 {
-                        adjust |= 0x06;
-                    }
                     if c_flag || a > 0x99 {
                         carry = true;
-                        adjust |= 0x60;
+                        a = a.wrapping_add(0x60);
+                    }
+                    if h_flag || (a & 0x0F) > 0x09 {
+                        a = a.wrapping_add(0x06);
                     }
                 } else {
-                    if c_flag && h_flag {
-                        carry = true;
-                        adjust |= 0x9A;
-                    } else if c_flag {
-                        carry = true;
-                        adjust |= 0xA0;
-                    } else if h_flag {
-                        adjust |= 0xFA;
+                    if c_flag {
+                        a = a.wrapping_sub(0x60);
+                    }
+                    if h_flag {
+                        a = a.wrapping_sub(0x06);
                     }
                 }
 
-                self.reg.a = a.wrapping_add(adjust);
+                self.reg.a = a;
                 self.reg.set_flag(Flag::Z, self.reg.a == 0);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, carry);
@@ -2479,7 +1505,7 @@ impl CPU {
             },
             Instruction::NOP => self.reg.pc += 1,
             Instruction::STOP => {},
-            Instruction::NULL => {},
+            Instruction::NULL => panic!("Unused opcode"),
             _ => panic!("Unrecognized instr: {:?}", instr)
         }
     }
@@ -2507,19 +1533,21 @@ impl CPU {
             self.execute(mmu, instr);
 
             // DEBUGGING
-            if mmu.rb(0xFF50) != 0 {
-                println!("{:#X}: {:?}\nSTATE AFTER EXECUTION:", byte, instr);
-                println!(
-                    "PC: {:#X}, AF: {:#X}, BC: {:#X}, DE: {:#X}, HL: {:#X}, SP: {:#X}",
-                    self.reg.pc, self.reg.af(), self.reg.bc(),
-                    self.reg.de(), self.reg.hl(), self.reg.sp,
-                );
-                println!(
-                    "Z: {}, N: {}, H: {}, C: {}, IME: {}, HALT: {}\n",
-                    self.reg.get_flag(Flag::Z), self.reg.get_flag(Flag::N),
-                    self.reg.get_flag(Flag::H), self.reg.get_flag(Flag::C),
-                    self.ime, self.halt
-                );
+            let next_byte = mmu.rb(self.reg.pc);
+            if byte != 0x18 { // mmu.rb(0xFF50) != 0 {
+                println!("[{:#X}]: {:#X} - {:?}", self.reg.pc, byte, instr);
+//                println!("{:#X}: {:?}\nSTATE AFTER EXECUTION:", byte, instr);
+//                println!(
+//                    "PC: {:#X}, AF: {:#X}, BC: {:#X}, DE: {:#X}, HL: {:#X}, SP: {:#X}",
+//                    self.reg.pc, self.reg.af(), self.reg.bc(),
+//                    self.reg.de(), self.reg.hl(), self.reg.sp,
+//                );
+//                println!(
+//                    "Z: {}, N: {}, H: {}, C: {}, IME: {}, HALT: {}\n",
+//                    self.reg.get_flag(Flag::Z), self.reg.get_flag(Flag::N),
+//                    self.reg.get_flag(Flag::H), self.reg.get_flag(Flag::C),
+//                    self.ime, self.halt
+//                );
             }
         }
 
@@ -2617,6 +1645,7 @@ pub enum Instruction {
     ADD(Target),
     ADC(Target),
     ADDHL(Target),
+    ADDSP,
     CPL,
     SCF,
     CCF,
@@ -2682,7 +1711,7 @@ impl Instruction {
             0x22 => Instruction::LD(Target::HLI, Target::A),
             0x23 => Instruction::INC(Target::HL),
             0x24 => Instruction::INC(Target::H),
-            0x25 => Instruction::DEC(Target::D),
+            0x25 => Instruction::DEC(Target::H),
             0x26 => Instruction::LD(Target::H, Target::IMM8),
             0x27 => Instruction::DAA,
             0x28 => Instruction::JR(JumpFlag::Z),
@@ -2877,7 +1906,7 @@ impl Instruction {
             0xE5 => Instruction::PUSH(Target::HL),
             0xE6 => Instruction::AND(Target::IMM8),
             0xE7 => Instruction::RST(0x20),
-            0xE8 => Instruction::ADD(Target::SP),
+            0xE8 => Instruction::ADDSP,
             0xE9 => Instruction::JP(JumpFlag::AtHL),
             0xEA => Instruction::LD(Target::IMM16, Target::A),
             0xEB => Instruction::NULL, // unused opcode

@@ -14,23 +14,23 @@ use crate::mmu::MMU;
 use crate::ppu::{PPU, SCREEN_W, SCREEN_H};
 
 fn main() {
-//    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/01-special.gb";
-//    let mut file = File::open(path).unwrap();
-//    let mut test = Vec::<u8>::new();
-//    file.read_to_end(&mut test);
-//    let mut mmu = MMU::new();
-//    mmu.read_blargg(test);
-
-    let mut boot = Vec::<u8>::new();
-    let mut rom = Vec::<u8>::new();
-    let mut file = File::open("ROMS/DMG_ROM.bin").unwrap();
-    file.read_to_end(&mut boot);
-    file = File::open("ROMS/tetris_jue1.1.gb").unwrap();
-    file.read_to_end(&mut rom);
-
+    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/08-misc instrs.gb";
+    let mut file = File::open(path).unwrap();
+    let mut test = Vec::<u8>::new();
+    file.read_to_end(&mut test);
     let mut mmu = MMU::new();
-    mmu.read_boot(&boot);
-    mmu.read_rom(&rom);
+    mmu.read_blargg(&test);
+
+//    let mut boot = Vec::<u8>::new();
+//    let mut rom = Vec::<u8>::new();
+//    let mut file = File::open("ROMS/DMG_ROM.bin").unwrap();
+//    file.read_to_end(&mut boot);
+//    file = File::open("ROMS/tetris_jue1.1.gb").unwrap();
+//    file.read_to_end(&mut rom);
+//
+//    let mut mmu = MMU::new();
+//    mmu.read_boot(&boot);
+//    mmu.read_rom(&rom);
 
     let mut cpu = CPU::new();
     let mut ppu = PPU::new();
