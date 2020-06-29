@@ -14,7 +14,7 @@ use crate::mmu::MMU;
 use crate::ppu::{PPU, SCREEN_W, SCREEN_H};
 
 fn main() {
-    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/08-misc instrs.gb";
+    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/01-special.gb";
     let mut file = File::open(path).unwrap();
     let mut test = Vec::<u8>::new();
     file.read_to_end(&mut test);

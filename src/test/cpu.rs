@@ -68,7 +68,7 @@ fn rlca() {
     let mut mmu = MMU::new();
     cpu.reg.a = 0x85;
     cpu.execute(&mut mmu, Instruction::RLCA);
-    assert_eq!(cpu.reg.a, 0x0A);
+    assert_eq!(cpu.reg.a, 0x0B);
     assert_eq!(cpu.reg.get_flag(Flag::C), true);
 }
 

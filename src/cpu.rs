@@ -390,9 +390,10 @@ impl CPU {
                         self.reg.pc += 3;
                     },
                     (Target::HL, Target::SP) => {
-                        let imm8 = self.get_imm8(mmu) as i8 as u16;
-                        let (v, c) = self.reg.sp.overflowing_add(imm8);
-                        let hc = (self.reg.sp & 0xFFF) + (imm8 & 0xFFF) > 0xFFF;
+                        let imm8 = self.get_imm8(mmu) as i8 as i16 as u16;
+                        let v = self.reg.sp.wrapping_add(imm8);
+                        let hc = (self.reg.sp & 0xF) + (imm8 & 0xF) > 0xF;
+                        let c = (self.reg.sp & 0xFF) + (imm8 & 0xFF) > 0xFF;
                         self.reg.set_flag(Flag::Z, false);
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::C, c);
@@ -662,6 +663,7 @@ impl CPU {
                     Target::D  => self.reg.d,
                     Target::E  => self.reg.e,
                     Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => {
                         let imm8 = self.get_imm8(mmu);
@@ -700,6 +702,7 @@ impl CPU {
                     Target::D  => self.reg.d,
                     Target::E  => self.reg.e,
                     Target::H  => self.reg.h,
+                    Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => {
                         let imm8 = self.get_imm8(mmu);
@@ -1349,7 +1352,7 @@ impl CPU {
             },
             Instruction::RLCA => {
                 let c = (self.reg.a & 0x80) != 0;
-                self.reg.a = (self.reg.a << 1); // | c as u8;
+                self.reg.a = (self.reg.a << 1) | c as u8;
                 self.reg.set_flag(Flag::Z, false);
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
@@ -2158,11 +2161,13 @@ impl Instruction {
             0xDB => Instruction::SET(3, Target::E),
             0xDC => Instruction::SET(3, Target::H),
             0xDD => Instruction::SET(3, Target::L),
+            0xDE => Instruction::SET(3, Target::HL),
             0xDF => Instruction::SET(3, Target::A),
             0xE0 => Instruction::SET(4, Target::B),
             0xE1 => Instruction::SET(4, Target::C),
             0xE2 => Instruction::SET(4, Target::D),
             0xE3 => Instruction::SET(4, Target::E),
+            0xE4 => Instruction::SET(4, Target::H),
             0xE5 => Instruction::SET(4, Target::L),
             0xE6 => Instruction::SET(4, Target::HL),
             0xE7 => Instruction::SET(4, Target::A),
@@ -2172,6 +2177,7 @@ impl Instruction {
             0xEB => Instruction::SET(5, Target::E),
             0xEC => Instruction::SET(5, Target::H),
             0xED => Instruction::SET(5, Target::L),
+            0xEE => Instruction::SET(5, Target::HL),
             0xEF => Instruction::SET(5, Target::A),
             0xF0 => Instruction::SET(6, Target::B),
             0xF1 => Instruction::SET(6, Target::C),
@@ -2187,6 +2193,7 @@ impl Instruction {
             0xFB => Instruction::SET(7, Target::E),
             0xFC => Instruction::SET(7, Target::H),
             0xFD => Instruction::SET(7, Target::L),
+            0xFE => Instruction::SET(7, Target::HL),
             0xFF => Instruction::SET(7, Target::A),
             _ => panic!("Unrecognized prefixed opcode: {:#X}", opcode)
         }
