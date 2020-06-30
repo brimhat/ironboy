@@ -9,7 +9,7 @@ impl MMU {
     pub fn new() -> MMU {
         MMU {
             boot: [0; 0x100],
-                mem: [0; MEM_SIZE]
+            mem: [0; MEM_SIZE]
         }
     }
 

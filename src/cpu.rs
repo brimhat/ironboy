@@ -1476,6 +1476,7 @@ impl CPU {
                     }
                 } else {
                     if c_flag {
+                        carry = true;
                         a = a.wrapping_sub(0x60);
                     }
                     if h_flag {
@@ -1506,7 +1507,7 @@ impl CPU {
                 self.reg.pc = self.pop(mmu);
                 self.reg.sp += 2;
             },
-            Instruction::NOP => self.reg.pc += 1,
+            Instruction::NOP => self.reg.pc = self.reg.pc.wrapping_add(1),
             Instruction::STOP => {},
             Instruction::NULL => panic!("Unused opcode"),
             _ => panic!("Unrecognized instr: {:?}", instr)
