@@ -2,36 +2,38 @@ mod mmu;
 mod registers;
 mod cpu;
 mod ppu;
+mod cartridge;
 mod instructions;
 mod test { mod cpu; }
 
 use std::io;
 use std::io::prelude::*;
 use std::fs::File;
+use std::result::Result;
 use minifb::{Key, Window, WindowOptions};
 use crate::cpu::CPU;
 use crate::mmu::MMU;
 use crate::ppu::{PPU, SCREEN_W, SCREEN_H};
+use crate::cartridge::Cartridge;
 
 fn main() {
-    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb";
-    let mut file = File::open(path).unwrap();
+
     let mut test = Vec::<u8>::new();
-    file.read_to_end(&mut test);
-    let mut mmu = MMU::new();
-    mmu.read_blargg(&test);
+    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/11-op a,(hl).gb";
+    let mut file = match File::open(path) {
+        Err(e) => panic!("{}", e),
+        Ok(f) => f,
+    };
+    match file.read_to_end(&mut test) {
+        Err(e) => panic!("{}", e),
+        Ok(_) => (),
+    };
+    let mut cartridge = match Cartridge::new(test) {
+        Err(e) => panic!("Error loading cartridge: {:#?}", e),
+        Ok(c) => c,
+    };
 
-//    let mut boot = Vec::<u8>::new();
-//    let mut rom = Vec::<u8>::new();
-//    let mut file = File::open("ROMS/DMG_ROM.bin").unwrap();
-//    file.read_to_end(&mut boot);
-//    file = File::open("ROMS/tetris_jue1.1.gb").unwrap();
-//    file.read_to_end(&mut rom);
-//
-//    let mut mmu = MMU::new();
-//    mmu.read_boot(&boot);
-//    mmu.read_rom(&rom);
-
+    let mut mmu = MMU::new(&mut cartridge);
     let mut cpu = CPU::new();
     let mut ppu = PPU::new();
 
@@ -58,8 +60,4 @@ fn main() {
             ppu.update_screen = false;
         }
     }
-//    loop {
-//        let clocks = cpu.step(&mut mmu);
-//        ppu.step(&mut mmu, clocks);
-//    }
 }

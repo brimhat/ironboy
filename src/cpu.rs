@@ -1537,9 +1537,8 @@ impl CPU {
             self.execute(mmu, instr);
 
             // DEBUGGING
-            let next_byte = mmu.rb(self.reg.pc);
-            if byte != 0x18 { // mmu.rb(0xFF50) != 0 {
-                println!("[{:#X}]: {:#X} - {:?}", self.reg.pc, byte, instr);
+            if byte != 0x18 && byte != 0x10 {
+                println!("[{:#X}]: {:#X} - {:?}", old_pc, byte, instr);
 //                println!("{:#X}: {:?}\nSTATE AFTER EXECUTION:", byte, instr);
 //                println!(
 //                    "PC: {:#X}, AF: {:#X}, BC: {:#X}, DE: {:#X}, HL: {:#X}, SP: {:#X}",
@@ -1934,7 +1933,6 @@ impl Instruction {
             0xFD => Instruction::NULL, // unused opcode
             0xFE => Instruction::CP(Target::IMM8),
             0xFF => Instruction::RST(0x38),
-            _ => panic!("Unrecognized opcode: {:#X}", opcode)
         }
     }
 
@@ -2196,7 +2194,6 @@ impl Instruction {
             0xFD => Instruction::SET(7, Target::L),
             0xFE => Instruction::SET(7, Target::HL),
             0xFF => Instruction::SET(7, Target::A),
-            _ => panic!("Unrecognized prefixed opcode: {:#X}", opcode)
         }
     }
 }
