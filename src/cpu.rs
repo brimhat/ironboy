@@ -2,11 +2,13 @@ use crate::mmu::MMU;
 use crate::registers::Registers;
 use crate::registers::Flag;
 use crate::instructions::{CLOCKS, CB_CLOCKS};
+use crate::timer::Timer;
 
 pub struct CPU {
     pub reg: Registers,
     pub ime: bool,
     pub halt: bool,
+    timer: Timer,
 }
 
 impl CPU {
@@ -15,6 +17,7 @@ impl CPU {
             reg: Registers::new(),
             ime: false,
             halt: false,
+            timer: Timer::new(),
         }
     }
 
@@ -1510,7 +1513,6 @@ impl CPU {
             Instruction::NOP => self.reg.pc = self.reg.pc.wrapping_add(1),
             Instruction::STOP => {},
             Instruction::NULL => panic!("Unused opcode"),
-            _ => panic!("Unrecognized instr: {:?}", instr)
         }
     }
 
@@ -1539,21 +1541,10 @@ impl CPU {
             // DEBUGGING
             if byte != 0x18 && byte != 0x10 {
                 println!("[{:#X}]: {:#X} - {:?}", old_pc, byte, instr);
-//                println!("{:#X}: {:?}\nSTATE AFTER EXECUTION:", byte, instr);
-//                println!(
-//                    "PC: {:#X}, AF: {:#X}, BC: {:#X}, DE: {:#X}, HL: {:#X}, SP: {:#X}",
-//                    self.reg.pc, self.reg.af(), self.reg.bc(),
-//                    self.reg.de(), self.reg.hl(), self.reg.sp,
-//                );
-//                println!(
-//                    "Z: {}, N: {}, H: {}, C: {}, IME: {}, HALT: {}\n",
-//                    self.reg.get_flag(Flag::Z), self.reg.get_flag(Flag::N),
-//                    self.reg.get_flag(Flag::H), self.reg.get_flag(Flag::C),
-//                    self.ime, self.halt
-//                );
             }
         }
 
+        self.timer.inc(mmu, clocks);
         clocks
     }
 

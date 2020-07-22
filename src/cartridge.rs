@@ -152,17 +152,17 @@ impl Cartridge {
                         } else {
                             value & 0b1_1111
                         };
-                        self.rom_offsets = mbc.get_rom_offsets();
+                        self.rom_offsets = mbc1.get_rom_offsets();
                     },
                     0x4000..=0x5FFF => {
                         mbc1.bank2 = value & 0b11;
-                        self.rom_offsets = mbc.get_rom_offsets();
-                        self.ram_offset = mbc.get_ram_offsets();
+                        self.rom_offsets = mbc1.get_rom_offsets();
+                        self.ram_offset = mbc1.get_ram_offsets();
                     },
                     0x6000..=0x7FFF => {
                         mbc1.mode = (value & 0b1) == 0b1;
-                        self.rom_offsets = mbc.get_rom_offsets();
-                        self.ram_offset = mbc.get_ram_offsets();
+                        self.rom_offsets = mbc1.get_rom_offsets();
+                        self.ram_offset = mbc1.get_ram_offsets();
                     },
                     _ => panic!("Virtual address overflow: {:#X}", address)
                 }

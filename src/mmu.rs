@@ -25,25 +25,6 @@ impl<'a> MMU<'a> {
         }
     }
 
-    pub fn read_rom(&mut self, rom: &Vec<u8>) {
-        let mut i: u16 = 0x0000;
-        for &byte in rom.iter() {
-            self.wb(i, byte);
-            i += 1;
-        }
-    }
-
-    // skip boot rom and read blargg test
-    pub fn read_blargg(&mut self, test: &Vec<u8>) {
-        let mut i: usize = 0x0000;
-        for &byte in test.iter() {
-            if i >= 0xFFFF { continue; }
-            self.mem[i] = byte;
-            i += 1;
-        }
-        self.mem[0xFF50] = 1;
-    }
-
     pub fn rb(&self, address: u16) -> u8 {
         if address < 0x100 {
             return if self.rb(0xFF50) == 0 {
@@ -62,6 +43,12 @@ impl<'a> MMU<'a> {
     }
 
     pub fn wb(&mut self, address: u16, value: u8) {
+        if address == 0xFF04 {
+            // if divider is written to, it is reset to 0
+            self.mem[address as usize] = 0;
+            return;
+        }
+
         match address {
             0x0000..=0x7FFF => self.cartridge.write_rom(address, value),
             0xA000..=0xBFFF => self.cartridge.write_ram(address, value),
