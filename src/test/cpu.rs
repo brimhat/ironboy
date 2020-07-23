@@ -1,11 +1,23 @@
 use crate::mmu::MMU;
+use crate::cartridge::Cartridge;
 use crate::cpu::{ CPU, Instruction, JumpFlag, Target };
 use crate::registers::{ Registers, Flag };
+
+const ROM: [u8; 32768] = [0; 32768];
+
+pub fn cartridge() -> Cartridge {
+    let mut cartridge = match Cartridge::new(ROM.to_vec()) {
+        Err(e) => panic!("Error loading cartridge: {:#?}", e),
+        Ok(c) => c,
+    };
+    return cartridge;
+}
 
 #[test]
 fn ld() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
 
     // LD r r
     cpu.reg.a = 0x20;
@@ -21,7 +33,7 @@ fn ld() {
 
     // LD r (HL)
     cpu.reg.a = 0x33;
-    cpu.reg.set_hl(0x1500);
+    cpu.reg.set_hl(0x8000);
     mmu.wb(cpu.reg.hl(), 0x1F);
     assert_eq!(cpu.reg.a, 0x33);
     cpu.execute(&mut mmu, Instruction::LD(Target::A, Target::HL));
@@ -54,7 +66,8 @@ fn ld() {
 #[test]
 fn rla() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x95;
     cpu.reg.set_flag(Flag::C, true);
     cpu.execute(&mut mmu, Instruction::RLA);
@@ -65,7 +78,8 @@ fn rla() {
 #[test]
 fn rlca() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x85;
     cpu.execute(&mut mmu, Instruction::RLCA);
     assert_eq!(cpu.reg.a, 0x0B);
@@ -75,7 +89,8 @@ fn rlca() {
 #[test]
 fn rrca() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x3B;
     cpu.execute(&mut mmu, Instruction::RRCA);
     assert_eq!(cpu.reg.a, 0x9D);
@@ -85,7 +100,8 @@ fn rrca() {
 #[test]
 fn rra() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x81;
     cpu.reg.set_flag(Flag::C, false);
     cpu.execute(&mut mmu, Instruction::RRA);
@@ -96,7 +112,8 @@ fn rra() {
 #[test]
 fn rl() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.l = 0x80;
     cpu.execute(&mut mmu, Instruction::RL(Target::L));
     assert_eq!(cpu.reg.l, 0x0);
@@ -113,7 +130,8 @@ fn rl() {
 #[test]
 fn rlc() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x85;
     cpu.execute(&mut mmu, Instruction::RLC(Target::A));
     assert_eq!(cpu.reg.a, 0x0B);
@@ -130,7 +148,8 @@ fn rlc() {
 #[test]
 fn rr() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.l = 0x01;
     cpu.execute(&mut mmu, Instruction::RR(Target::L));
     assert_eq!(cpu.reg.l, 0x0);
@@ -147,7 +166,8 @@ fn rr() {
 #[test]
 fn rrc() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.c = 0x01;
     cpu.execute(&mut mmu, Instruction::RRC(Target::C));
     assert_eq!(cpu.reg.c, 0x80);
@@ -164,14 +184,15 @@ fn rrc() {
 #[test]
 fn sla() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.d = 0x80;
     cpu.execute(&mut mmu, Instruction::SLA(Target::D));
     assert_eq!(cpu.reg.a, 0x00);
     assert_eq!(cpu.reg.get_flag(Flag::Z), true);
     assert_eq!(cpu.reg.get_flag(Flag::C), true);
 
-    cpu.reg.set_hl(0x3000);
+    cpu.reg.set_hl(0x8000);
     mmu.wb(cpu.reg.hl(), 0xFF);
     cpu.execute(&mut mmu, Instruction::SLA(Target::HL));
     assert_eq!(mmu.rb(cpu.reg.hl()), 0xFE);
@@ -182,14 +203,15 @@ fn sla() {
 #[test]
 fn sra() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x8A;
     cpu.execute(&mut mmu, Instruction::SRA(Target::A));
     assert_eq!(cpu.reg.a, 0xC5);
     assert_eq!(cpu.reg.get_flag(Flag::Z), false);
     assert_eq!(cpu.reg.get_flag(Flag::C), false);
 
-    cpu.reg.set_hl(0x3000);
+    cpu.reg.set_hl(0x8000);
     mmu.wb(cpu.reg.hl(), 0x01);
     cpu.execute(&mut mmu, Instruction::SRA(Target::HL));
     assert_eq!(mmu.rb(cpu.reg.hl()), 0x00);
@@ -200,14 +222,15 @@ fn sra() {
 #[test]
 fn srl() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x01;
     cpu.execute(&mut mmu, Instruction::SRL(Target::A));
     assert_eq!(cpu.reg.a, 0x0);
     assert_eq!(cpu.reg.get_flag(Flag::Z), true);
     assert_eq!(cpu.reg.get_flag(Flag::C), true);
 
-    cpu.reg.set_hl(0x3000);
+    cpu.reg.set_hl(0x8000);
     mmu.wb(cpu.reg.hl(), 0xFF);
     cpu.execute(&mut mmu, Instruction::SRL(Target::HL));
     assert_eq!(mmu.rb(cpu.reg.hl()), 0x7F);
@@ -218,7 +241,8 @@ fn srl() {
 #[test]
 fn and() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x5A;
     cpu.reg.b = 0x3F;
     cpu.reg.c = 0x38;
@@ -244,7 +268,8 @@ fn and() {
 #[test]
 fn or() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x5A;
     cpu.reg.b = 0x03;
     cpu.reg.c = 0x0F;
@@ -263,7 +288,8 @@ fn or() {
 #[test]
 fn xor() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0xFF;
     cpu.reg.b = 0x0F;
     cpu.reg.c = 0x8A;
@@ -285,7 +311,8 @@ fn xor() {
 #[test]
 fn inc() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0xFF;
     cpu.execute(&mut mmu, Instruction::INC(Target::A));
     assert_eq!(cpu.reg.a, 0x0);
@@ -301,7 +328,8 @@ fn inc() {
 #[test]
 fn dec() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x01;
     cpu.execute(&mut mmu, Instruction::DEC(Target::A));
     assert_eq!(cpu.reg.a, 0x0);
@@ -317,8 +345,9 @@ fn dec() {
 #[test]
 fn add() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
-    cpu.reg.set_hl(0x3000);
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
+    cpu.reg.set_hl(0x8000);
     cpu.reg.a = 0x3A;
     mmu.wb(cpu.reg.hl(), 0xC6);
     cpu.reg.set_flag(Flag::H, false);
@@ -333,7 +362,8 @@ fn add() {
 #[test]
 fn adc() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0xE1;
     cpu.reg.b = 0x0F;
     cpu.reg.c = 0x3B;
@@ -366,7 +396,8 @@ fn adc() {
 #[test]
 fn add_hl() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.set_hl(0x8A23);
     cpu.reg.set_de(0x0605);
     cpu.execute(&mut mmu, Instruction::ADDHL(Target::DE));
@@ -387,7 +418,8 @@ fn add_hl() {
 #[test]
 fn sub() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x3E;
     cpu.reg.b = 0x3E;
     cpu.reg.c = 0x0F;
@@ -419,7 +451,8 @@ fn sub() {
 #[test]
 fn sbc() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x3B;
     cpu.reg.b = 0x2A;
     cpu.reg.c = 0x4F;
@@ -452,7 +485,8 @@ fn sbc() {
 #[test]
 fn cp() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x3C;
     cpu.reg.b = 0x2F;
     cpu.reg.c = 0x3C;
@@ -482,13 +516,14 @@ fn cp() {
 #[test]
 fn swap() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x00;
     cpu.execute(&mut mmu, Instruction::SWAP(Target::A));
     assert_eq!(cpu.reg.a, 0x00);
     assert_eq!(cpu.reg.get_flag(Flag::Z), true);
 
-    cpu.reg.set_hl(0x3000);
+    cpu.reg.set_hl(0x8000);
     mmu.wb(cpu.reg.hl(), 0x0F);
     cpu.execute(&mut mmu, Instruction::SWAP(Target::HL));
     assert_eq!(mmu.rb(cpu.reg.hl()), 0xF0);
@@ -498,7 +533,8 @@ fn swap() {
 #[test]
 fn daa() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x45;
     cpu.reg.b = 0x38;
     cpu.execute(&mut mmu, Instruction::ADD(Target::B));
@@ -516,7 +552,8 @@ fn daa() {
 #[test]
 fn bit() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x80;
     cpu.execute(&mut mmu, Instruction::BIT(7, Target::A));
     assert_eq!(cpu.reg.get_flag(Flag::Z), false);
@@ -529,7 +566,8 @@ fn bit() {
 #[test]
 fn res() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x80;
     cpu.execute(&mut mmu, Instruction::RES(7, Target::A));
     assert_eq!(cpu.reg.a, 0x0);
@@ -538,7 +576,7 @@ fn res() {
     cpu.execute(&mut mmu, Instruction::RES(1, Target::L));
     assert_eq!(cpu.reg.l, 0x39);
 
-    cpu.reg.set_hl(0x3000);
+    cpu.reg.set_hl(0x8000);
     mmu.wb(cpu.reg.hl(), 0xFF);
     cpu.execute(&mut mmu, Instruction::RES(3, Target::HL));
     assert_eq!(mmu.rb(cpu.reg.hl()), 0xF7);
@@ -547,7 +585,8 @@ fn res() {
 #[test]
 fn set() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x80;
     cpu.execute(&mut mmu, Instruction::SET(2, Target::A));
     assert_eq!(cpu.reg.a, 0x84);
@@ -556,7 +595,7 @@ fn set() {
     cpu.execute(&mut mmu, Instruction::SET(7, Target::L));
     assert_eq!(cpu.reg.l, 0xBB);
 
-    cpu.reg.set_hl(0x3000);
+    cpu.reg.set_hl(0x8000);
     mmu.wb(cpu.reg.hl(), 0x00);
     cpu.execute(&mut mmu, Instruction::SET(2, Target::HL));
     assert_eq!(mmu.rb(cpu.reg.hl()), 0x04);
@@ -565,7 +604,8 @@ fn set() {
 #[test]
 fn cpl() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.a = 0x35;
     cpu.execute(&mut mmu, Instruction::CPL);
     assert_eq!(cpu.reg.a, 0xCA);
@@ -576,7 +616,8 @@ fn cpl() {
 #[test]
 fn ccf() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.set_flag(Flag::C, true);
     cpu.execute(&mut mmu, Instruction::CCF);
     assert_eq!(cpu.reg.get_flag(Flag::N), false);
@@ -593,7 +634,8 @@ fn ccf() {
 #[test]
 fn scf() {
     let mut cpu = CPU::new();
-    let mut mmu = MMU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
     cpu.reg.set_flag(Flag::C, true);
     cpu.reg.set_flag(Flag::N, true);
     cpu.reg.set_flag(Flag::H, true);

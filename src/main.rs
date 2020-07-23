@@ -5,7 +5,10 @@ mod ppu;
 mod cartridge;
 mod instructions;
 mod timer;
-mod test { mod cpu; }
+mod test {
+    mod cpu;
+    mod timer;
+}
 
 use std::io;
 use std::io::prelude::*;
@@ -17,10 +20,11 @@ use crate::mmu::MMU;
 use crate::ppu::{PPU, SCREEN_W, SCREEN_H};
 use crate::cartridge::Cartridge;
 use crate::timer::Timer;
+use std::str::from_boxed_utf8_unchecked;
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/blargg-test-roms/instr_timing/instr_timing.gb";
+    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/02-interrupts";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -34,6 +38,7 @@ fn main() {
         Ok(c) => c,
     };
 
+    let mut timer = Timer::new();
     let mut mmu = MMU::new(&mut cartridge);
     let mut cpu = CPU::new();
     let mut ppu = PPU::new();
@@ -47,6 +52,7 @@ fn main() {
     ).unwrap_or_else(|e| { panic!("{}", e) });
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let clocks = cpu.step(&mut mmu);
+        timer.step(&mut mmu, clocks);
         ppu.step(&mut mmu, clocks);
 
         if ppu.update_screen {

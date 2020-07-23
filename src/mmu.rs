@@ -1,11 +1,13 @@
 use crate::cartridge::Cartridge;
+use crate::timer::Timer;
 
 const MEM_SIZE: usize = 0xFFFF + 1;
 
 pub struct MMU<'a> {
     pub boot: [u8; 0x100],
     cartridge: &'a mut Cartridge,
-    mem: [u8; MEM_SIZE]
+    mem: [u8; MEM_SIZE],
+    pub reset_div: bool,
 }
 
 impl<'a> MMU<'a> {
@@ -13,7 +15,8 @@ impl<'a> MMU<'a> {
         MMU {
             boot: [0; 0x100],
             cartridge,
-            mem: [0; MEM_SIZE]
+            mem: [0; MEM_SIZE],
+            reset_div: false,
         }
     }
 
@@ -23,6 +26,10 @@ impl<'a> MMU<'a> {
             self.boot[i] = byte;
             i += 1;
         }
+    }
+
+    pub fn write_div(&mut self, value: u8) {
+        self.mem[0xFF04] = value;
     }
 
     pub fn rb(&self, address: u16) -> u8 {
@@ -44,7 +51,8 @@ impl<'a> MMU<'a> {
 
     pub fn wb(&mut self, address: u16, value: u8) {
         if address == 0xFF04 {
-            // if divider is written to, it is reset to 0
+            // if divider is written to, div and system internal counter set to 0
+            self.reset_div = true;
             self.mem[address as usize] = 0;
             return;
         }
