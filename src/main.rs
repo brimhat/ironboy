@@ -3,11 +3,11 @@ mod registers;
 mod cpu;
 mod ppu;
 mod cartridge;
-mod instructions;
 mod timer;
 mod test {
     mod cpu;
     mod timer;
+    mod cartridge;
 }
 
 use std::io;
@@ -20,11 +20,10 @@ use crate::mmu::MMU;
 use crate::ppu::{PPU, SCREEN_W, SCREEN_H};
 use crate::cartridge::Cartridge;
 use crate::timer::Timer;
-use std::str::from_boxed_utf8_unchecked;
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/02-interrupts";
+    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/11-op a,(hl).gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,

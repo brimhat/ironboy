@@ -1,10 +1,10 @@
 use std::borrow::{Borrow, BorrowMut};
 use std::result::Result;
 
-const KILOBYTE: u32 = 1024;
-const MEGABYTE: u32 = 1024 * KILOBYTE;
-const ROM_BANK_SIZE: u32 = 16 * KILOBYTE;
-const RAM_BANK_SIZE: u32 = 8 * KILOBYTE;
+pub const KILOBYTE: u32 = 1024;
+pub const MEGABYTE: u32 = 1024 * KILOBYTE;
+pub const ROM_BANK_SIZE: u32 = 0x4000;
+pub const RAM_BANK_SIZE: u32 = 0x2000;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Mbc1 {
@@ -26,8 +26,8 @@ impl Mbc1 {
 
     pub fn get_rom_offsets(&self) -> (u32, u32) {
         let bits = self.bank2 << 5;
-        let upper = (bits | self.bank1) as u32;
         let lower = if self.mode { bits } else { 0 } as u32;
+        let upper = (bits | self.bank1) as u32;
         (ROM_BANK_SIZE * lower, ROM_BANK_SIZE * upper)
     }
 
@@ -46,6 +46,7 @@ pub enum Mbc {
 #[derive(Debug)]
 pub enum CartridgeError {
     MissingHeaderInformation,
+    UnsupportedROMType,
     UnsupportedROMSize,
     UnsupportedRAMSize,
     UnsupportedMBC,
@@ -57,7 +58,7 @@ pub struct Cartridge {
     rom: Vec<u8>,
     ram: Vec<u8>,
     mbc: Mbc,
-    rom_offsets: (u32, u32),
+    pub rom_offsets: (u32, u32),
     ram_offset: u32,
 }
 
@@ -65,6 +66,10 @@ impl Cartridge {
     pub fn new(data: Vec<u8>) -> Result<Cartridge, CartridgeError> {
         if data.len() < 0x150 {
             return Err(CartridgeError::MissingHeaderInformation);
+        }
+
+        if data[0x143] == 0xC0 {
+            return Err(CartridgeError::UnsupportedROMType)
         }
 
         let rom_size = match data[0x148] {
@@ -96,8 +101,7 @@ impl Cartridge {
             _ => return Err(CartridgeError::UnsupportedMBC)
         };
 
-        let title_result = String::from_utf8(data[0x134..0x143].to_owned());
-        let title: String = match title_result {
+        let title = match String::from_utf8(data[0x134..0x143].to_owned()) {
             Err(e) => panic!("Error loading cartridge title: {}", e),
             Ok(s) => s,
         };
@@ -142,27 +146,26 @@ impl Cartridge {
     pub fn write_rom(&mut self, address: u16, value: u8) {
         match self.mbc {
             Mbc::NoMBC => {},
-            Mbc::MBC1 { mut mbc } => {
-                let mbc1 = mbc.borrow_mut();
+            Mbc::MBC1 { ref mut mbc } => {
                 match address {
-                    0x0000..=0x1FFF => mbc1.ram_enabled = (value & 0b1111) == 0b1010,
+                    0x0000..=0x1FFF => mbc.ram_enabled = (value & 0b1111) == 0b1010,
                     0x2000..=0x3FFF => {
-                        mbc1.bank1 = if value & 0b1_1111 == 0b0 {
+                        mbc.bank1 = if value & 0b1_1111 == 0b0 {
                             0b1
                         } else {
                             value & 0b1_1111
                         };
-                        self.rom_offsets = mbc1.get_rom_offsets();
+                        self.rom_offsets = mbc.get_rom_offsets();
                     },
                     0x4000..=0x5FFF => {
-                        mbc1.bank2 = value & 0b11;
-                        self.rom_offsets = mbc1.get_rom_offsets();
-                        self.ram_offset = mbc1.get_ram_offsets();
+                        mbc.bank2 = value & 0b11;
+                        self.rom_offsets = mbc.get_rom_offsets();
+                        self.ram_offset = mbc.get_ram_offsets();
                     },
                     0x6000..=0x7FFF => {
-                        mbc1.mode = (value & 0b1) == 0b1;
-                        self.rom_offsets = mbc1.get_rom_offsets();
-                        self.ram_offset = mbc1.get_ram_offsets();
+                        mbc.mode = (value & 0b1) == 0b1;
+                        self.rom_offsets = mbc.get_rom_offsets();
+                        self.ram_offset = mbc.get_ram_offsets();
                     },
                     _ => panic!("Virtual address overflow: {:#X}", address)
                 }

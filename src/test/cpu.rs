@@ -652,3 +652,123 @@ fn scf() {
     assert_eq!(cpu.reg.get_flag(Flag::H), false);
     assert_eq!(cpu.reg.get_flag(Flag::C), true);
 }
+
+#[test]
+fn ei() {
+    let mut cpu = CPU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
+    cpu.reg.pc = 0x8000;
+    cpu.reg.sp = 0xC000;
+    mmu.wb(0xFF0F, 4);
+    mmu.wb(0xFFFF, 4);
+    // the effect of EI is delayed by one instruction. this means that EI followed
+    // immediately by DI does not allow interrupts between the EI and the DI
+    mmu.wb(0x8000, 0xFB); // EI
+    cpu.step(&mut mmu);
+    mmu.wb(0x8001, 0xF3); // DI
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x8002);
+
+    mmu.wb(0x8002, 0xFB); // EI
+    cpu.step(&mut mmu);
+    mmu.wb(0x8003, 0x00); // Delay by one instruction
+    cpu.step(&mut mmu);
+    mmu.wb(0x8004, 0x00); // Interrupt
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x0051);     // Expect PC == 0x51 because ROM[0x0050] == NOP
+}
+
+#[test]
+fn jp() {
+    let mut cpu = CPU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
+    cpu.reg.pc = 0x8000;
+    mmu.wb(0x8000, 0xC3); // JP(A)
+    mmu.wb(0x8001, 0xD7); // lo
+    mmu.wb(0x8002, 0x90); // hi
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x90D7);
+
+    mmu.wb(0x90D7, 0x04); // INC(B)
+    cpu.step(&mut mmu);
+    mmu.wb(0x90D8, 0x05); // DEC(B)
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.get_flag(Flag::Z), true);
+
+    mmu.wb(0x90D9, 0xC2); // JP(NZ) *should fail*
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x90DC);
+
+    mmu.wb(0x90DC, 0xCA); // JP(Z) *should pass*
+    mmu.wb(0x90DD, 0x34);
+    mmu.wb(0x90DE, 0xC5);
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0xC534);
+
+    mmu.wb(0xC534, 0x37); // SCF
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.get_flag(Flag::C), true);
+
+    mmu.wb(0xC535, 0xD2); // JP(NC) *should fail*
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0xC538);
+
+    mmu.wb(0xC538, 0xDA); // JP(C) *should pass*
+    mmu.wb(0xC539, 0xB5);
+    mmu.wb(0xC53A, 0x83);
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x83B5);
+
+    cpu.reg.set_hl(0xEFFF);
+    mmu.wb(0x83B5, 0xE9); // JP(AtHL)
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0xEFFF);
+}
+
+#[test]
+fn jr() {
+    let mut cpu = CPU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
+    cpu.reg.pc = 0x8000;
+    mmu.wb(0x8000, 0x18);
+    mmu.wb(0x8001, 0x60);
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x8062);
+}
+
+#[test]
+fn call() {
+    let mut cpu = CPU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
+    cpu.reg.pc = 0x8000;
+    cpu.reg.sp = 0xFFFE;
+    mmu.wb(0x8000, 0xCD); // CALL(A)
+    mmu.wb(0x8001, 0x34);
+    mmu.wb(0x8002, 0x12);
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x1234);
+    assert_eq!(mmu.rb(cpu.reg.sp), 0x03);
+    assert_eq!(mmu.rb(cpu.reg.sp + 1), 0x80);
+}
+
+#[test]
+fn ret() {
+    let mut cpu = CPU::new();
+    let mut cartridge = cartridge();
+    let mut mmu = MMU::new(&mut cartridge);
+    cpu.reg.pc = 0x8000;
+    cpu.reg.sp = 0xFFFE;
+    mmu.wb(0x8000, 0xCD); // CALL(A)
+    mmu.wb(0x8001, 0x00);
+    mmu.wb(0x8002, 0x90);
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x9000);
+
+    mmu.wb(0x9000, 0xC9);
+    cpu.step(&mut mmu);
+    assert_eq!(cpu.reg.pc, 0x8003);
+}

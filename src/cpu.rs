@@ -1543,6 +1543,8 @@ impl CPU {
             Instruction::RETI => {
                 self.ime = true;
                 self.reg.pc = self.pop(mmu);
+                panic!("RETI");
+                self.reg.pc += 1;
                 self.reg.sp += 2;
             },
             Instruction::NOP => self.reg.pc = self.reg.pc.wrapping_add(1),
@@ -1552,6 +1554,16 @@ impl CPU {
     }
 
     pub fn step(&mut self, mmu: &mut MMU) -> u8 {
+        // interrupts are checked before fetching a new instruction
+        if self.interrupt_exists(mmu) {
+            // effect of EI is delayed one instruction
+            let (step_back, overflow) = self.reg.pc.overflowing_sub(1);
+            let last_instr = Instruction::decode(mmu.rb(step_back));
+            if !overflow && last_instr != Instruction::EI {
+                self.handle_interrupt(mmu);
+            }
+        }
+
         let byte = mmu.rb(self.reg.pc);
         let mut clocks = CLOCKS[byte as usize];
 
@@ -1565,21 +1577,13 @@ impl CPU {
             }
         };
 
-        let old_pc = self.reg.pc;
-        if self.interrupt_exists(mmu) {
-            self.handle_interrupt(mmu);
-        }
-
-        if self.halt {
-            panic!("{}", clocks);
-            clocks = 4; // length of halt
-        } else if self.reg.pc == old_pc {
+        if !self.halt {
+            let old_pc = self.reg.pc;
             self.execute(mmu, instr);
 
-            // DEBUGGING
-            if byte != 0x18 && byte != 0x10 {
-                println!("[{:#X}]: {:#X} - {:?}", old_pc, byte, instr);
-            }
+//            if byte != 0x10 {
+//                println!("[{:#X}] ({:#X}) - {:?}", old_pc, byte, instr);
+//            }
         }
 
         clocks
@@ -1590,7 +1594,7 @@ impl CPU {
         let i_f = mmu.rb(0xFF0F);
         let e_f = e_i & i_f;
 
-        (self.halt || self.ime) && e_f != 0
+        (self.halt || self.ime) && (e_f & 0b0001_1111) != 0
     }
 
     pub fn handle_interrupt(&mut self, mmu: &mut MMU) {
@@ -1604,10 +1608,12 @@ impl CPU {
         let i_f = mmu.rb(0xFF0F);
         let e_f = e_i & i_f;
         let index = e_f.trailing_zeros();
-        mmu.wb(0xFF0F, e_f & !(1 << index));
+//        println!("OLD IF: {:b}", i_f);
+        mmu.wb(0xFF0F, i_f & !(1 << index));
+//        println!("NEW IF: {:b}", mmu.rb(0xFF0F));
 
         self.push(mmu, self.reg.pc);
-        self.reg.sp -= 2;
+        self.reg.sp = self.reg.sp.wrapping_sub(2);
         self.reg.pc = match index {
             0 => 0x40, // VBlank
             1 => 0x48, // LCD Stat
@@ -1629,18 +1635,18 @@ impl CPU {
     }
 
     pub fn push(&mut self, mmu: &mut MMU, value: u16) {
-        mmu.wb(self.reg.sp - 1, (value >> 8) as u8);
-        mmu.wb(self.reg.sp - 2, value as u8);
+        mmu.wb(self.reg.sp.wrapping_sub(1), (value >> 8) as u8);
+        mmu.wb(self.reg.sp.wrapping_sub(2), value as u8);
     }
 
     pub fn pop(&self, mmu: &MMU) -> u16 {
         let lo = mmu.rb(self.reg.sp);
-        let hi = mmu.rb(self.reg.sp + 1);
+        let hi = mmu.rb(self.reg.sp.wrapping_add(1));
         ((hi as u16) << 8) | lo as u16
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Instruction {
     LD(Target, Target),
     XOR(Target),
@@ -1690,13 +1696,13 @@ pub enum Instruction {
     NULL, // 0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Target {
     A, AF, B, C, BC, D, E, DE, H, L, HL, HLI, HLD, SP, IMM8, IMM16, FFC, FFIMM8,
     AtHL // only used for INC (HL) and DEC (HL)
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum JumpFlag {
     A, NZ, Z, NC, C,
     AtHL,
