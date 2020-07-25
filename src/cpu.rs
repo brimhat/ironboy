@@ -2,6 +2,8 @@ use crate::mmu::MMU;
 use crate::registers::Registers;
 use crate::registers::Flag;
 use crate::timer::Timer;
+use std::fs::File;
+use std::io::prelude::*;
 
 pub const CLOCKS: [u8; 256] = [
     4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8, 8,  4,  4, 8,  4,
@@ -60,21 +62,18 @@ impl CPU {
         match instr {
             Instruction::LD(t1, t2) => {
                 match (t1, t2) {
-                    (Target::SP, Target::IMM16) => {
-                        self.reg.sp = self.get_imm16(mmu);
-                        self.reg.pc += 3;
-                    },
+                    (Target::SP, Target::IMM16) => self.reg.sp = self.get_imm16(mmu),
                     (Target::BC, Target::IMM16) => {
-                        self.reg.set_bc(self.get_imm16(mmu));
-                        self.reg.pc += 3;
+                        let imm16 = self.get_imm16(mmu);
+                        self.reg.set_bc(imm16)
                     },
                     (Target::DE, Target::IMM16) => {
-                        self.reg.set_de(self.get_imm16(mmu));
-                        self.reg.pc += 3;
+                        let imm16 = self.get_imm16(mmu);
+                        self.reg.set_de(imm16)
                     },
                     (Target::HL, Target::IMM16) => {
-                        self.reg.set_hl(self.get_imm16(mmu));
-                        self.reg.pc += 3;
+                        let imm16 = self.get_imm16(mmu);
+                        self.reg.set_hl(imm16)
                     },
                     (Target::IMM16, Target::SP) => {
                         let lo = (self.reg.sp & 0x00FF) as u8;
@@ -82,351 +81,107 @@ impl CPU {
                         let nn = self.get_imm16(mmu);
                         mmu.wb(nn, lo);
                         mmu.wb(nn + 1, hi);
-                        self.reg.pc += 3;
                     },
-                    (Target::HLI, Target::A) => {
-                        mmu.wb(self.reg.hli(), self.reg.a);
-                        self.reg.pc += 1;
-                    },
-                    (Target::HLD, Target::A) => {
-                        mmu.wb(self.reg.hld(), self.reg.a);
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::HLI) => {
-                        self.reg.a = mmu.rb(self.reg.hli());
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::HLD) => {
-                        self.reg.a = mmu.rb(self.reg.hld());
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::HL) => {
-                        self.reg.a = mmu.rb(self.reg.hl());
-                        self.reg.pc += 1;
-                    },
-                    (Target::B, Target::HL) => {
-                        self.reg.b = mmu.rb(self.reg.hl());
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::HL) => {
-                        self.reg.c = mmu.rb(self.reg.hl());
-                        self.reg.pc += 1;
-                    },
-                    (Target::D, Target::HL) => {
-                        self.reg.d = mmu.rb(self.reg.hl());
-                        self.reg.pc += 1;
-                    },
-                    (Target::E, Target::HL) => {
-                        self.reg.e = mmu.rb(self.reg.hl());
-                        self.reg.pc += 1;
-                    },
-                    (Target::H, Target::HL) => {
-                        self.reg.h = mmu.rb(self.reg.hl());
-                        self.reg.pc += 1;
-                    },
-                    (Target::L, Target::HL) => {
-                        self.reg.l = mmu.rb(self.reg.hl());
-                        self.reg.pc += 1;
-                    },
-                    (Target::BC, Target::A) => {
-                        mmu.wb(self.reg.bc(), self.reg.a);
-                        self.reg.pc += 1;
-                    },
-                    (Target::DE, Target::A) => {
-                        mmu.wb(self.reg.de(), self.reg.a);
-                        self.reg.pc += 1;
-                    },
-                    (Target::HL, Target::A) => {
-                        mmu.wb(self.reg.hl(), self.reg.a);
-                        self.reg.pc += 1;
-                    },
-                    (Target::HL, Target::B) => {
-                        mmu.wb(self.reg.hl(), self.reg.b);
-                        self.reg.pc += 1;
-                    },
-                    (Target::HL, Target::C) => {
-                        mmu.wb(self.reg.hl(), self.reg.c);
-                        self.reg.pc += 1;
-                    },
-                    (Target::HL, Target::D) => {
-                        mmu.wb(self.reg.hl(), self.reg.d);
-                        self.reg.pc += 1;
-                    },
-                    (Target::HL, Target::E) => {
-                        mmu.wb(self.reg.hl(), self.reg.e);
-                        self.reg.pc += 1;
-                    },
-                    (Target::HL, Target::H) => {
-                        mmu.wb(self.reg.hl(), self.reg.h);
-                        self.reg.pc += 1;
-                    },
-                    (Target::HL, Target::L) => {
-                        mmu.wb(self.reg.hl(), self.reg.l);
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::BC) => {
-                        self.reg.a = mmu.rb(self.reg.bc());
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::DE) => {
-                        self.reg.a = mmu.rb(self.reg.de());
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::IMM8) => {
-                        self.reg.c = self.get_imm8(mmu);
-                        self.reg.pc += 2;
-                    },
-                    (Target::A, Target::IMM8) => {
-                        self.reg.a = self.get_imm8(mmu);
-                        self.reg.pc += 2;
-                    },
-                    (Target::B, Target::IMM8) => {
-                        self.reg.b = self.get_imm8(mmu);
-                        self.reg.pc += 2;
-                    },
-                    (Target::D, Target::IMM8) => {
-                        self.reg.d = self.get_imm8(mmu);
-                        self.reg.pc += 2;
-                    },
-                    (Target::E, Target::IMM8) => {
-                        self.reg.e = self.get_imm8(mmu);
-                        self.reg.pc += 2;
-                    },
-                    (Target::H, Target::IMM8) => {
-                        self.reg.h = self.get_imm8(mmu);
-                        self.reg.pc += 2;
-                    },
-                    (Target::L, Target::IMM8) => {
-                        self.reg.l = self.get_imm8(mmu);
-                        self.reg.pc += 2;
-                    },
+                    (Target::HLI, Target::A) => mmu.wb(self.reg.hli(), self.reg.a),
+                    (Target::HLD, Target::A) => mmu.wb(self.reg.hld(), self.reg.a),
+                    (Target::A, Target::HLI) => self.reg.a = mmu.rb(self.reg.hli()),
+                    (Target::A, Target::HLD) => self.reg.a = mmu.rb(self.reg.hld()),
+                    (Target::A, Target::HL) => self.reg.a = mmu.rb(self.reg.hl()),
+                    (Target::B, Target::HL) => self.reg.b = mmu.rb(self.reg.hl()),
+                    (Target::C, Target::HL) => self.reg.c = mmu.rb(self.reg.hl()),
+                    (Target::D, Target::HL) => self.reg.d = mmu.rb(self.reg.hl()),
+                    (Target::E, Target::HL) => self.reg.e = mmu.rb(self.reg.hl()),
+                    (Target::H, Target::HL) => self.reg.h = mmu.rb(self.reg.hl()),
+                    (Target::L, Target::HL) => self.reg.l = mmu.rb(self.reg.hl()),
+                    (Target::BC, Target::A) => mmu.wb(self.reg.bc(), self.reg.a),
+                    (Target::DE, Target::A) => mmu.wb(self.reg.de(), self.reg.a),
+                    (Target::HL, Target::A) => mmu.wb(self.reg.hl(), self.reg.a),
+                    (Target::HL, Target::B) => mmu.wb(self.reg.hl(), self.reg.b),
+                    (Target::HL, Target::C) => mmu.wb(self.reg.hl(), self.reg.c),
+                    (Target::HL, Target::D) => mmu.wb(self.reg.hl(), self.reg.d),
+                    (Target::HL, Target::E) => mmu.wb(self.reg.hl(), self.reg.e),
+                    (Target::HL, Target::H) => mmu.wb(self.reg.hl(), self.reg.h),
+                    (Target::HL, Target::L) => mmu.wb(self.reg.hl(), self.reg.l),
+                    (Target::A, Target::BC) => self.reg.a = mmu.rb(self.reg.bc()),
+                    (Target::A, Target::DE) => self.reg.a = mmu.rb(self.reg.de()),
+                    (Target::A, Target::IMM8) => self.reg.a = self.get_imm8(mmu),
+                    (Target::B, Target::IMM8) => self.reg.b = self.get_imm8(mmu),
+                    (Target::C, Target::IMM8) => self.reg.c = self.get_imm8(mmu),
+                    (Target::D, Target::IMM8) => self.reg.d = self.get_imm8(mmu),
+                    (Target::E, Target::IMM8) => self.reg.e = self.get_imm8(mmu),
+                    (Target::H, Target::IMM8) => self.reg.h = self.get_imm8(mmu),
+                    (Target::L, Target::IMM8) => self.reg.l = self.get_imm8(mmu),
                     (Target::HL, Target::IMM8) => {
                         let imm8 = self.get_imm8(mmu);
                         mmu.wb(self.reg.hl(), imm8);
-                        self.reg.pc += 2;
                     },
-                    (Target::B, Target::A) => {
-                        self.reg.b = self.reg.a;
-                        self.reg.pc += 1;
-                    },
-                    (Target::B, Target::B) => {
-                        self.reg.b = self.reg.b;
-                        self.reg.pc += 1;
-                    },
-                    (Target::B, Target::C) => {
-                        self.reg.b = self.reg.c;
-                        self.reg.pc += 1;
-                    },
-                    (Target::B, Target::D) => {
-                        self.reg.b = self.reg.d;
-                        self.reg.pc += 1;
-                    },
-                    (Target::B, Target::E) => {
-                        self.reg.b = self.reg.e;
-                        self.reg.pc += 1;
-                    },
-                    (Target::B, Target::H) => {
-                        self.reg.b = self.reg.h;
-                        self.reg.pc += 1;
-                    },
-                    (Target::B, Target::L) => {
-                        self.reg.b = self.reg.l;
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::A) => {
-                        self.reg.c = self.reg.a;
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::B) => {
-                        self.reg.c = self.reg.b;
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::C) => {
-                        self.reg.c = self.reg.c;
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::D) => {
-                        self.reg.c = self.reg.d;
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::E) => {
-                        self.reg.c = self.reg.e;
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::H) => {
-                        self.reg.c = self.reg.h;
-                        self.reg.pc += 1;
-                    },
-                    (Target::C, Target::L) => {
-                        self.reg.c = self.reg.l;
-                        self.reg.pc += 1;
-                    },
-                    (Target::D, Target::A) => {
-                        self.reg.d = self.reg.a;
-                        self.reg.pc += 1;
-                    },
-                    (Target::D, Target::B) => {
-                        self.reg.d = self.reg.b;
-                        self.reg.pc += 1;
-                    },
-                    (Target::D, Target::C) => {
-                        self.reg.d = self.reg.c;
-                        self.reg.pc += 1;
-                    },
-                    (Target::D, Target::D) => {
-                        self.reg.d = self.reg.d;
-                        self.reg.pc += 1;
-                    },
-                    (Target::D, Target::E) => {
-                        self.reg.d = self.reg.e;
-                        self.reg.pc += 1;
-                    },
-                    (Target::D, Target::H) => {
-                        self.reg.d = self.reg.h;
-                        self.reg.pc += 1;
-                    },
-                    (Target::D, Target::L) => {
-                        self.reg.d = self.reg.l;
-                        self.reg.pc += 1;
-                    },
-                    (Target::E, Target::A) => {
-                        self.reg.e = self.reg.a;
-                        self.reg.pc += 1;
-                    },
-                    (Target::E, Target::B) => {
-                        self.reg.e = self.reg.b;
-                        self.reg.pc += 1;
-                    },
-                    (Target::E, Target::C) => {
-                        self.reg.e = self.reg.c;
-                        self.reg.pc += 1;
-                    },
-                    (Target::E, Target::D) => {
-                        self.reg.e = self.reg.d;
-                        self.reg.pc += 1;
-                    },
-                    (Target::E, Target::E) => {
-                        self.reg.e = self.reg.e;
-                        self.reg.pc += 1;
-                    },
-                    (Target::E, Target::H) => {
-                        self.reg.e = self.reg.h;
-                        self.reg.pc += 1;
-                    },
-                    (Target::E, Target::L) => {
-                        self.reg.e = self.reg.l;
-                        self.reg.pc += 1;
-                    },
-                    (Target::H, Target::A) => {
-                        self.reg.h = self.reg.a;
-                        self.reg.pc += 1;
-                    },
-                    (Target::H, Target::B) => {
-                        self.reg.h = self.reg.b;
-                        self.reg.pc += 1;
-                    },
-                    (Target::H, Target::C) => {
-                        self.reg.h = self.reg.c;
-                        self.reg.pc += 1;
-                    },
-                    (Target::H, Target::D) => {
-                        self.reg.h = self.reg.d;
-                        self.reg.pc += 1;
-                    },
-                    (Target::H, Target::E) => {
-                        self.reg.h = self.reg.e;
-                        self.reg.pc += 1;
-                    },
-                    (Target::H, Target::H) => {
-                        self.reg.h = self.reg.h;
-                        self.reg.pc += 1;
-                    },
-                    (Target::H, Target::L) => {
-                        self.reg.h = self.reg.l;
-                        self.reg.pc += 1;
-                    },
-                    (Target::L, Target::A) => {
-                        self.reg.l = self.reg.a;
-                        self.reg.pc += 1;
-                    },
-                    (Target::L, Target::B) => {
-                        self.reg.l = self.reg.b;
-                        self.reg.pc += 1;
-                    },
-                    (Target::L, Target::C) => {
-                        self.reg.l = self.reg.c;
-                        self.reg.pc += 1;
-                    },
-                    (Target::L, Target::D) => {
-                        self.reg.l = self.reg.d;
-                        self.reg.pc += 1;
-                    },
-                    (Target::L, Target::E) => {
-                        self.reg.l = self.reg.e;
-                        self.reg.pc += 1;
-                    },
-                    (Target::L, Target::H) => {
-                        self.reg.l = self.reg.h;
-                        self.reg.pc += 1;
-                    },
-                    (Target::L, Target::L) => {
-                        self.reg.l = self.reg.l;
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::A) => {
-                        self.reg.a = self.reg.a;
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::B) => {
-                        self.reg.a = self.reg.b;
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::C) => {
-                        self.reg.a = self.reg.c;
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::D) => {
-                        self.reg.a = self.reg.d;
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::E) => {
-                        self.reg.a = self.reg.e;
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::H) => {
-                        self.reg.a = self.reg.h;
-                        self.reg.pc += 1;
-                    },
-                    (Target::A, Target::L) => {
-                        self.reg.a = self.reg.l;
-                        self.reg.pc += 1;
-                    },
+                    (Target::B, Target::A) => self.reg.b = self.reg.a,
+                    (Target::B, Target::B) => self.reg.b = self.reg.b,
+                    (Target::B, Target::C) => self.reg.b = self.reg.c,
+                    (Target::B, Target::D) => self.reg.b = self.reg.d,
+                    (Target::B, Target::E) => self.reg.b = self.reg.e,
+                    (Target::B, Target::H) => self.reg.b = self.reg.h,
+                    (Target::B, Target::L) => self.reg.b = self.reg.l,
+                    (Target::C, Target::A) => self.reg.c = self.reg.a,
+                    (Target::C, Target::B) => self.reg.c = self.reg.b,
+                    (Target::C, Target::C) => self.reg.c = self.reg.c,
+                    (Target::C, Target::D) => self.reg.c = self.reg.d,
+                    (Target::C, Target::E) => self.reg.c = self.reg.e,
+                    (Target::C, Target::H) => self.reg.c = self.reg.h,
+                    (Target::C, Target::L) => self.reg.c = self.reg.l,
+                    (Target::D, Target::A) => self.reg.d = self.reg.a,
+                    (Target::D, Target::B) => self.reg.d = self.reg.b,
+                    (Target::D, Target::C) => self.reg.d = self.reg.c,
+                    (Target::D, Target::D) => self.reg.d = self.reg.d,
+                    (Target::D, Target::E) => self.reg.d = self.reg.e,
+                    (Target::D, Target::H) => self.reg.d = self.reg.h,
+                    (Target::D, Target::L) => self.reg.d = self.reg.l,
+                    (Target::E, Target::A) => self.reg.e = self.reg.a,
+                    (Target::E, Target::B) => self.reg.e = self.reg.b,
+                    (Target::E, Target::C) => self.reg.e = self.reg.c,
+                    (Target::E, Target::D) => self.reg.e = self.reg.d,
+                    (Target::E, Target::E) => self.reg.e = self.reg.e,
+                    (Target::E, Target::H) => self.reg.e = self.reg.h,
+                    (Target::E, Target::L) => self.reg.e = self.reg.l,
+                    (Target::H, Target::A) => self.reg.h = self.reg.a,
+                    (Target::H, Target::B) => self.reg.h = self.reg.b,
+                    (Target::H, Target::C) => self.reg.h = self.reg.c,
+                    (Target::H, Target::D) => self.reg.h = self.reg.d,
+                    (Target::H, Target::E) => self.reg.h = self.reg.e,
+                    (Target::H, Target::H) => self.reg.h = self.reg.h,
+                    (Target::H, Target::L) => self.reg.h = self.reg.l,
+                    (Target::L, Target::A) => self.reg.l = self.reg.a,
+                    (Target::L, Target::B) => self.reg.l = self.reg.b,
+                    (Target::L, Target::C) => self.reg.l = self.reg.c,
+                    (Target::L, Target::D) => self.reg.l = self.reg.d,
+                    (Target::L, Target::E) => self.reg.l = self.reg.e,
+                    (Target::L, Target::H) => self.reg.l = self.reg.h,
+                    (Target::L, Target::L) => self.reg.l = self.reg.l,
+                    (Target::A, Target::A) => self.reg.a = self.reg.a,
+                    (Target::A, Target::B) => self.reg.a = self.reg.b,
+                    (Target::A, Target::C) => self.reg.a = self.reg.c,
+                    (Target::A, Target::D) => self.reg.a = self.reg.d,
+                    (Target::A, Target::E) => self.reg.a = self.reg.e,
+                    (Target::A, Target::H) => self.reg.a = self.reg.h,
+                    (Target::A, Target::L) => self.reg.a = self.reg.l,
                     (Target::FFIMM8, Target::A) => {
                         let address: u16 = 0xFF00 | (self.get_imm8(mmu) as u16);
                         mmu.wb(address, self.reg.a);
-                        self.reg.pc += 2;
                     },
                     (Target::FFC, Target::A) => {
                         let address: u16 = 0xFF00 | (self.reg.c as u16);
                         mmu.wb(address, self.reg.a);
-                        self.reg.pc += 1;
                     },
                     (Target::A, Target::FFIMM8) => {
-                        self.reg.a = mmu.rb(0xFF00 | (self.get_imm8(mmu) as u16));
-                        self.reg.pc += 2;
+                        let v =  mmu.rb(0xFF00 | (self.get_imm8(mmu) as u16));
+                        self.reg.a = v;
                     },
                     (Target::A, Target::FFC) => {
-                        self.reg.a = mmu.rb(0xFF00 | self.reg.c as u16);
-                        self.reg.pc += 1;
+                        let v = mmu.rb(0xFF00 | self.reg.c as u16);
+                        self.reg.a = v;
                     },
-                    (Target::IMM16, Target::A) => {
-                        mmu.wb(self.get_imm16(mmu), self.reg.a);
-                        self.reg.pc += 3;
-                    },
-                    (Target::A, Target::IMM16) => {
-                        self.reg.a = mmu.rb(self.get_imm16(mmu));
-                        self.reg.pc += 3;
-                    },
+                    (Target::IMM16, Target::A) => mmu.wb(self.get_imm16(mmu), self.reg.a),
+                    (Target::A, Target::IMM16) => self.reg.a = mmu.rb(self.get_imm16(mmu)),
                     (Target::HL, Target::SP) => {
                         let imm8 = self.get_imm8(mmu) as i8 as i16 as u16;
                         let v = self.reg.sp.wrapping_add(imm8);
@@ -437,12 +192,8 @@ impl CPU {
                         self.reg.set_flag(Flag::C, c);
                         self.reg.set_flag(Flag::H, hc);
                         self.reg.set_hl(v);
-                        self.reg.pc += 2;
                     },
-                    (Target::SP, Target::HL) => {
-                        self.reg.sp = self.reg.hl();
-                        self.reg.pc += 1;
-                    },
+                    (Target::SP, Target::HL) => self.reg.sp = self.reg.hl(),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
             },
@@ -454,7 +205,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) == 0x0F);
                         self.reg.a = a;
-                        self.reg.pc += 1;
                     },
                     Target::B => {
                         let b = self.reg.b.wrapping_add(1);
@@ -462,7 +212,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (self.reg.b & 0x0F) == 0x0F);
                         self.reg.b = b;
-                        self.reg.pc += 1;
                     },
                     Target::C => {
                         let c = self.reg.c.wrapping_add(1);
@@ -470,7 +219,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (self.reg.c & 0x0F) == 0x0F);
                         self.reg.c = c;
-                        self.reg.pc += 1;
                     },
                     Target::D => {
                         let d = self.reg.d.wrapping_add(1);
@@ -478,7 +226,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (self.reg.d & 0x0F) == 0x0F);
                         self.reg.d = d;
-                        self.reg.pc += 1;
                     },
                     Target::E => {
                         let e = self.reg.e.wrapping_add(1);
@@ -486,7 +233,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (self.reg.e & 0x0F) == 0x0F);
                         self.reg.e = e;
-                        self.reg.pc += 1;
                     },
                     Target::H => {
                         let h = self.reg.h.wrapping_add(1);
@@ -494,7 +240,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (self.reg.h & 0x0F) == 0x0F);
                         self.reg.h = h;
-                        self.reg.pc += 1;
                     },
                     Target::L => {
                         let l = self.reg.l.wrapping_add(1);
@@ -502,24 +247,11 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (self.reg.l & 0x0F) == 0x0F);
                         self.reg.l = l;
-                        self.reg.pc += 1;
                     },
-                    Target::BC => {
-                        self.reg.set_bc(self.reg.bc().wrapping_add(1));
-                        self.reg.pc += 1;
-                    },
-                    Target::DE => {
-                        self.reg.set_de(self.reg.de().wrapping_add(1));
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        self.reg.set_hl(self.reg.hl().wrapping_add(1));
-                        self.reg.pc += 1;
-                    },
-                    Target::SP => {
-                        self.reg.sp = self.reg.sp.wrapping_add(1);
-                        self.reg.pc += 1;
-                    },
+                    Target::BC => self.reg.set_bc(self.reg.bc().wrapping_add(1)),
+                    Target::DE => self.reg.set_de(self.reg.de().wrapping_add(1)),
+                    Target::HL => self.reg.set_hl(self.reg.hl().wrapping_add(1)),
+                    Target::SP => self.reg.sp = self.reg.sp.wrapping_add(1),
                     Target::AtHL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let new_hl = at_hl.wrapping_add(1);
@@ -527,7 +259,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, false);
                         self.reg.set_flag(Flag::H, (at_hl & 0x0F) == 0x0F);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.pc += 1;
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
@@ -540,7 +271,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, true);
                         self.reg.set_flag(Flag::H, (self.reg.a & 0x0F) == 0);
                         self.reg.a = a;
-                        self.reg.pc += 1;
                     },
                     Target::B => {
                         let b = self.reg.b.wrapping_sub(1);
@@ -548,7 +278,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, true);
                         self.reg.set_flag(Flag::H, (self.reg.b & 0x0F) == 0);
                         self.reg.b = b;
-                        self.reg.pc += 1;
                     },
                     Target::C => {
                         let c = self.reg.c.wrapping_sub(1);
@@ -556,7 +285,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, true);
                         self.reg.set_flag(Flag::H, (self.reg.c & 0x0F) == 0);
                         self.reg.c = c;
-                        self.reg.pc += 1;
                     },
                     Target::D => {
                         let d = self.reg.d.wrapping_sub(1);
@@ -564,7 +292,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, true);
                         self.reg.set_flag(Flag::H, (self.reg.d & 0x0F) == 0);
                         self.reg.d = d;
-                        self.reg.pc += 1;
                     },
                     Target::E => {
                         let e = self.reg.e.wrapping_sub(1);
@@ -572,7 +299,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, true);
                         self.reg.set_flag(Flag::H, (self.reg.e & 0x0F) == 0);
                         self.reg.e = e;
-                        self.reg.pc += 1;
                     },
                     Target::H => {
                         let h = self.reg.h.wrapping_sub(1);
@@ -580,7 +306,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, true);
                         self.reg.set_flag(Flag::H, (self.reg.h & 0x0F) == 0);
                         self.reg.h = h;
-                        self.reg.pc += 1;
                     },
                     Target::L => {
                         let l = self.reg.l.wrapping_sub(1);
@@ -588,24 +313,11 @@ impl CPU {
                         self.reg.set_flag(Flag::N, true);
                         self.reg.set_flag(Flag::H, (self.reg.l & 0x0F) == 0);
                         self.reg.l = l;
-                        self.reg.pc += 1;
                     },
-                    Target::BC => {
-                        self.reg.set_bc(self.reg.bc().wrapping_sub(1));
-                        self.reg.pc += 1;
-                    },
-                    Target::DE => {
-                        self.reg.set_de(self.reg.de().wrapping_sub(1));
-                        self.reg.pc += 1;
-                    },
-                    Target::HL => {
-                        self.reg.set_hl(self.reg.hl().wrapping_sub(1));
-                        self.reg.pc += 1;
-                    },
-                    Target::SP => {
-                        self.reg.sp = self.reg.sp.wrapping_sub(1);
-                        self.reg.pc += 1;
-                    },
+                    Target::BC => self.reg.set_bc(self.reg.bc().wrapping_sub(1)),
+                    Target::DE => self.reg.set_de(self.reg.de().wrapping_sub(1)),
+                    Target::HL => self.reg.set_hl(self.reg.hl().wrapping_sub(1)),
+                    Target::SP => self.reg.sp = self.reg.sp.wrapping_sub(1),
                     Target::AtHL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let new_hl = at_hl.wrapping_sub(1);
@@ -613,7 +325,6 @@ impl CPU {
                         self.reg.set_flag(Flag::N, true);
                         self.reg.set_flag(Flag::H, (at_hl & 0x0F) == 0);
                         mmu.wb(self.reg.hl(), new_hl);
-                        self.reg.pc += 1;
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
@@ -628,11 +339,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.pc += 1;
-                        imm8
-                    },
+                    Target::IMM8 => self.get_imm8(mmu),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
@@ -641,7 +348,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, false);
-                self.reg.pc += 1;
             },
             Instruction::OR(t) => {
                 let operand = match t {
@@ -653,11 +359,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.pc += 1;
-                        imm8
-                    },
+                    Target::IMM8 => self.get_imm8(mmu),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
@@ -666,7 +368,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::C, false);
                 self.reg.set_flag(Flag::H, false);
-                self.reg.pc += 1;
             },
             Instruction::AND(t) => {
                 let operand = match t {
@@ -678,11 +379,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.pc += 1;
-                        imm8
-                    },
+                    Target::IMM8 => self.get_imm8(mmu),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
@@ -691,7 +388,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, true);
                 self.reg.set_flag(Flag::C, false);
-                self.reg.pc += 1;
             },
             Instruction::ADD(t) => {
                 let operand = match t {
@@ -703,11 +399,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.pc += 1;
-                        imm8
-                    },
+                    Target::IMM8 => self.get_imm8(mmu),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
@@ -718,7 +410,6 @@ impl CPU {
                 self.reg.set_flag(Flag::C, c);
                 self.reg.set_flag(Flag::H, hc);
                 self.reg.a = v;
-                self.reg.pc += 1;
             },
             Instruction::ADDSP => {
                 let imm8 = self.get_imm8(mmu) as i8 as i16 as u16;
@@ -730,7 +421,6 @@ impl CPU {
                 self.reg.set_flag(Flag::C, c);
                 self.reg.set_flag(Flag::H, hc);
                 self.reg.sp = v;
-                self.reg.pc += 2;
             },
             Instruction::ADC(t) => {
                 let operand = match t {
@@ -742,11 +432,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.pc += 1;
-                        imm8
-                    },
+                    Target::IMM8 => self.get_imm8(mmu),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
@@ -759,7 +445,6 @@ impl CPU {
                 self.reg.set_flag(Flag::C, c1 || c2);
                 self.reg.set_flag(Flag::H, hc);
                 self.reg.a = v;
-                self.reg.pc += 1;
             },
             Instruction::ADDHL(t) => {
                 let operand = match t {
@@ -776,7 +461,6 @@ impl CPU {
                 self.reg.set_flag(Flag::C, c);
                 self.reg.set_flag(Flag::H, hc);
                 self.reg.set_hl(v);
-                self.reg.pc += 1;
             },
             Instruction::SUB(t) => {
                 let operand = match t {
@@ -788,11 +472,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.pc += 1;
-                        imm8
-                    },
+                    Target::IMM8 => self.get_imm8(mmu),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
@@ -803,7 +483,6 @@ impl CPU {
                 self.reg.set_flag(Flag::H, hc);
                 self.reg.set_flag(Flag::C, c);
                 self.reg.a = v;
-                self.reg.pc += 1;
             },
             Instruction::SBC(t) => {
                 let operand = match t {
@@ -815,11 +494,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.pc += 1;
-                        imm8
-                    },
+                    Target::IMM8 => self.get_imm8(mmu),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
@@ -832,7 +507,6 @@ impl CPU {
                 self.reg.set_flag(Flag::H, hc);
                 self.reg.set_flag(Flag::C, c1 || c2);
                 self.reg.a = v;
-                self.reg.pc += 1;
             },
             Instruction::CP(t) => {
                 let operand = match t {
@@ -844,11 +518,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    Target::IMM8 => {
-                        let imm8 = self.get_imm8(mmu);
-                        self.reg.pc += 1;
-                        imm8
-                    },
+                    Target::IMM8 => self.get_imm8(mmu),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
@@ -858,7 +528,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, true);
                 self.reg.set_flag(Flag::H, hc);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::BIT(i, t) => {
                 let operand = match t {
@@ -876,7 +545,6 @@ impl CPU {
                 self.reg.set_flag(Flag::Z, operand & (1 << i) == 0);
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, true);
-                self.reg.pc += 1;
             },
             Instruction::RES(i , t) => {
                 match t {
@@ -893,8 +561,6 @@ impl CPU {
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
-
-                self.reg.pc += 1;
             },
             Instruction::SET(i, t) => {
                 match t {
@@ -911,8 +577,6 @@ impl CPU {
                     },
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
-
-                self.reg.pc += 1;
             },
             Instruction::JR(f) => {
                 let should_jump = match f {
@@ -924,12 +588,10 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
-                let mut pc = self.reg.pc + 2;
+                let jump = self.get_imm8(mmu) as i8;
                 if should_jump {
-                    let n = self.get_imm8(mmu) as i8;
-                    pc = pc.wrapping_add(n as u16);
+                    self.reg.pc = self.reg.pc.wrapping_add(jump as u16);
                 }
-                self.reg.pc = pc;
             },
             Instruction::JP(f) => {
                 let mut jump = self.get_imm16(mmu);
@@ -947,8 +609,6 @@ impl CPU {
 
                 if should_jump {
                     self.reg.pc = jump;
-                } else {
-                    self.reg.pc += 3;
                 }
             },
             Instruction::CALL(f) => {
@@ -961,13 +621,10 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
-                let pc = self.reg.pc + 3;
+                let jump = self.get_imm16(mmu);
                 if should_jump {
-                    self.push(mmu, pc);
-                    self.reg.sp -= 2;
-                    self.reg.pc = self.get_imm16(mmu);
-                } else {
-                    self.reg.pc = pc;
+                    self.push(mmu, self.reg.pc);
+                    self.reg.pc = jump
                 }
             },
             Instruction::RET(f) => {
@@ -980,10 +637,8 @@ impl CPU {
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 };
 
-                self.reg.pc += 1;
                 if should_jump {
                     self.reg.pc = self.pop(mmu);
-                    self.reg.sp += 2;
                 }
             },
             Instruction::PUSH(t) => {
@@ -994,25 +649,19 @@ impl CPU {
                     Target::HL => self.push(mmu, self.reg.hl()),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
-
-                self.reg.sp -= 2;
-                self.reg.pc += 1;
             },
             Instruction::POP(t) => {
+                let pop = self.pop(mmu);
                 match t {
-                    Target::AF => self.reg.set_af(self.pop(mmu)),
-                    Target::BC => self.reg.set_bc(self.pop(mmu)),
-                    Target::DE => self.reg.set_de(self.pop(mmu)),
-                    Target::HL => self.reg.set_hl(self.pop(mmu)),
+                    Target::AF => self.reg.set_af(pop),
+                    Target::BC => self.reg.set_bc(pop),
+                    Target::DE => self.reg.set_de(pop),
+                    Target::HL => self.reg.set_hl(pop),
                     _ => panic!("Unrecognized instr: {:?}", instr)
                 }
-
-                self.reg.sp += 2;
-                self.reg.pc += 1;
             },
             Instruction::RST(t) => {
-                self.push(mmu, self.reg.pc + 1);
-                self.reg.sp -= 2;
+                self.push(mmu, self.reg.pc);
                 self.reg.pc = t as u16;
             },
             Instruction::RL(t) => {
@@ -1067,7 +716,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::RLC(t) => {
                 let (v, c) = match t {
@@ -1120,7 +768,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::RRC(t) => {
                 let (v, c) = match t {
@@ -1173,7 +820,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::RR(t) => {
                 let cf = self.reg.get_flag(Flag::C);
@@ -1226,8 +872,7 @@ impl CPU {
                 self.reg.set_flag(Flag::Z, v == 0);
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
-                self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
+                self.reg.set_flag(Flag::C, c);;
             },
             Instruction::SLA(t) => {
                 let (v, c) = match t {
@@ -1280,7 +925,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::SRA(t) => {
                 let (v, c) = match t {
@@ -1333,7 +977,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::SRL(t) => {
                 let (v, c) = match t {
@@ -1386,7 +1029,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::RLCA => {
                 let c = (self.reg.a & 0x80) != 0;
@@ -1395,7 +1037,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::RLA => {
                 let c = (self.reg.a & 0x80) != 0;
@@ -1404,7 +1045,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::RRCA => {
                 let c = (self.reg.a & 0x01) != 0;
@@ -1413,7 +1053,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::RRA => {
                 let c = (self.reg.a & 0x01) != 0;
@@ -1423,7 +1062,6 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, c);
-                self.reg.pc += 1;
             },
             Instruction::SWAP(t) => {
                 let v = match t {
@@ -1463,7 +1101,7 @@ impl CPU {
                         v
                     },
                     Target::HL => {
-                        let new_hl = mmu.rb(self.reg.hl()).swap_bytes();
+                        let new_hl = mmu.rb(self.reg.hl());
                         let v = ((new_hl & 0x0F) << 4) | ((new_hl & 0xF0) >> 4);
                         mmu.wb(self.reg.hl(), v);
                         v
@@ -1475,26 +1113,22 @@ impl CPU {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, false);
-                self.reg.pc += 1;
             },
             Instruction::CPL => {
                 self.reg.a = !self.reg.a;
                 self.reg.set_flag(Flag::N, true);
                 self.reg.set_flag(Flag::H, true);
-                self.reg.pc += 1;
             },
             Instruction::SCF => {
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, true);
-                self.reg.pc += 1;
             },
             Instruction::CCF => {
                 let c_flag = self.reg.get_flag(Flag::C);
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, !c_flag);
-                self.reg.pc += 1;
             },
             Instruction::DAA => {
                 let c_flag = self.reg.get_flag(Flag::C);
@@ -1526,29 +1160,16 @@ impl CPU {
                 self.reg.set_flag(Flag::Z, self.reg.a == 0);
                 self.reg.set_flag(Flag::H, false);
                 self.reg.set_flag(Flag::C, carry);
-                self.reg.pc += 1;
             },
-            Instruction::DI => {
-                self.ime = false;
-                self.reg.pc += 1;
-            },
-            Instruction::EI => {
-                self.ime = true;
-                self.reg.pc += 1;
-            },
-            Instruction::HALT => {
-                self.halt = true;
-                self.reg.pc += 1;
-            },
+            Instruction::DI => self.ime = false,
+            Instruction::EI => self.ime = true,
+            Instruction::HALT => self.halt = true,
             Instruction::RETI => {
                 self.ime = true;
                 self.reg.pc = self.pop(mmu);
-                panic!("RETI");
-                self.reg.pc += 1;
-                self.reg.sp += 2;
             },
-            Instruction::NOP => self.reg.pc = self.reg.pc.wrapping_add(1),
-            Instruction::STOP => {},
+            Instruction::NOP => {},
+            Instruction::STOP => self.reg.pc = self.reg.pc.wrapping_sub(1),
             Instruction::NULL => panic!("Unused opcode"),
         }
     }
@@ -1564,26 +1185,20 @@ impl CPU {
             }
         }
 
-        let byte = mmu.rb(self.reg.pc);
+        let byte = self.get_imm8(mmu);
         let mut clocks = CLOCKS[byte as usize];
 
         let instr = match byte == 0xCB {
             false => Instruction::decode(byte),
             true => {
-                self.reg.pc += 1;
-                let cb_byte = mmu.rb(self.reg.pc);
+                let cb_byte = self.get_imm8(mmu);
                 clocks = CB_CLOCKS[cb_byte as usize];
                 Instruction::decode_cb(cb_byte)
             }
         };
 
         if !self.halt {
-            let old_pc = self.reg.pc;
             self.execute(mmu, instr);
-
-//            if byte != 0x10 {
-//                println!("[{:#X}] ({:#X}) - {:?}", old_pc, byte, instr);
-//            }
         }
 
         clocks
@@ -1624,24 +1239,32 @@ impl CPU {
         };
     }
 
-    pub fn get_imm16(&self, mmu: &MMU) -> u16 {
-        let lo = mmu.rb(self.reg.pc + 1);
-        let hi = mmu.rb(self.reg.pc + 2);
+    pub fn get_imm16(&mut self, mmu: &MMU) -> u16 {
+        let lo = mmu.rb(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+        let hi = mmu.rb(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
         ((hi as u16) << 8) | lo as u16
     }
 
-    pub fn get_imm8(&self, mmu: &MMU) -> u8 {
-        mmu.rb(self.reg.pc + 1)
+    pub fn get_imm8(&mut self, mmu: &MMU) -> u8 {
+        let imm8 = mmu.rb(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+        imm8
     }
 
     pub fn push(&mut self, mmu: &mut MMU, value: u16) {
-        mmu.wb(self.reg.sp.wrapping_sub(1), (value >> 8) as u8);
-        mmu.wb(self.reg.sp.wrapping_sub(2), value as u8);
+        self.reg.sp = self.reg.sp.wrapping_sub(1);
+        mmu.wb(self.reg.sp, (value >> 8) as u8);
+        self.reg.sp = self.reg.sp.wrapping_sub(1);
+        mmu.wb(self.reg.sp, value as u8);
     }
 
-    pub fn pop(&self, mmu: &MMU) -> u16 {
+    pub fn pop(&mut self, mmu: &MMU) -> u16 {
         let lo = mmu.rb(self.reg.sp);
-        let hi = mmu.rb(self.reg.sp.wrapping_add(1));
+        self.reg.sp = self.reg.sp.wrapping_add(1);
+        let hi = mmu.rb(self.reg.sp);
+        self.reg.sp = self.reg.sp.wrapping_add(1);
         ((hi as u16) << 8) | lo as u16
     }
 }

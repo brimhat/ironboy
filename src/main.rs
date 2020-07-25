@@ -23,7 +23,7 @@ use crate::timer::Timer;
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/11-op a,(hl).gb";
+    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/02-interrupts.gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -49,6 +49,7 @@ fn main() {
         SCREEN_H,
         WindowOptions::default()
     ).unwrap_or_else(|e| { panic!("{}", e) });
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let clocks = cpu.step(&mut mmu);
         timer.step(&mut mmu, clocks);
