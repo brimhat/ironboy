@@ -6,22 +6,22 @@ use std::fs::File;
 use std::io::prelude::*;
 
 pub const CLOCKS: [u8; 256] = [
-    4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8, 8,  4,  4, 8,  4,
-    4, 12,  8,  8,  4,  4,  8,  4,  8,  8,  8, 8,  4,  4, 8,  4,
-    8, 12,  8,  8,  4,  4,  8,  4,  8,  8,  8, 8,  4,  4, 8,  4,
-    8, 12,  8,  8, 12, 12, 12,  4,  8,  8,  8, 8,  4,  4, 8,  4,
-    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
-    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
-    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
-    8,  8,  8,  8,  8,  8,  4,  8,  4,  4,  4, 4,  4,  4, 8,  4,
-    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
-    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
-    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
-    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
-    8, 12, 12, 16, 12, 16,  8, 16,  8, 16, 12, 4, 12, 24, 8, 16,
-    8, 12, 12,  0, 12, 16,  8, 16,  8, 16, 12, 0, 12,  0, 8, 16,
+     4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8, 8,  4,  4, 8,  4,
+     4, 12,  8,  8,  4,  4,  8,  4,  8,  8,  8, 8,  4,  4, 8,  4,
+     8, 12,  8,  8,  4,  4,  8,  4,  8,  8,  8, 8,  4,  4, 8,  4,
+     8, 12,  8,  8, 12, 12, 12,  4,  8,  8,  8, 8,  4,  4, 8,  4,
+     4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
+     4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
+     4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
+     8,  8,  8,  8,  8,  8,  4,  8,  4,  4,  4, 4,  4,  4, 8,  4,
+     4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
+     4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
+     4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
+     4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4, 4,  4,  4, 8,  4,
+     8, 12, 12, 16, 12, 16,  8, 16,  8, 16, 12, 4, 12, 24, 8, 16,
+     8, 12, 12,  0, 12, 16,  8, 16,  8, 16, 12, 0, 12,  0, 8, 16,
     12, 12,  8,  0,  0, 16,  8, 16, 16,  4, 16, 0,  0,  0, 8, 16,
-    12, 12,  8,  4,  0, 16,  8, 16, 12,  8, 16, 4,  0,  0, 8, 16
+    12, 12,  8,  4,  0, 16,  8, 16, 12,  8, 16, 4,  0,  0, 8, 16,
 ];
 
 pub const CB_CLOCKS: [u8; 256] = [
@@ -47,6 +47,7 @@ pub struct CPU {
     pub reg: Registers,
     pub ime: bool,
     pub halt: bool,
+    last_instr: Instruction,
 }
 
 impl CPU {
@@ -55,6 +56,7 @@ impl CPU {
             reg: Registers::new(),
             ime: false,
             halt: false,
+            last_instr: Instruction::NULL,
         }
     }
 
@@ -111,10 +113,7 @@ impl CPU {
                     (Target::E, Target::IMM8) => self.reg.e = self.get_imm8(mmu),
                     (Target::H, Target::IMM8) => self.reg.h = self.get_imm8(mmu),
                     (Target::L, Target::IMM8) => self.reg.l = self.get_imm8(mmu),
-                    (Target::HL, Target::IMM8) => {
-                        let imm8 = self.get_imm8(mmu);
-                        mmu.wb(self.reg.hl(), imm8);
-                    },
+                    (Target::HL, Target::IMM8) => mmu.wb(self.reg.hl(), self.get_imm8(mmu)),
                     (Target::B, Target::A) => self.reg.b = self.reg.a,
                     (Target::B, Target::B) => self.reg.b = self.reg.b,
                     (Target::B, Target::C) => self.reg.b = self.reg.c,
@@ -1169,38 +1168,29 @@ impl CPU {
                 self.reg.pc = self.pop(mmu);
             },
             Instruction::NOP => {},
-            Instruction::STOP => self.reg.pc = self.reg.pc.wrapping_sub(1),
+            Instruction::STOP => panic!("STOP"),
             Instruction::NULL => panic!("Unused opcode"),
         }
     }
 
     pub fn step(&mut self, mmu: &mut MMU) -> u8 {
-        // interrupts are checked before fetching a new instruction
-        if self.interrupt_exists(mmu) {
-            // effect of EI is delayed one instruction
-            let (step_back, overflow) = self.reg.pc.overflowing_sub(1);
-            let last_instr = Instruction::decode(mmu.rb(step_back));
-            if !overflow && last_instr != Instruction::EI {
-                self.handle_interrupt(mmu);
-            }
-        }
-
-        let byte = self.get_imm8(mmu);
-        let mut clocks = CLOCKS[byte as usize];
-
-        let instr = match byte == 0xCB {
-            false => Instruction::decode(byte),
-            true => {
-                let cb_byte = self.get_imm8(mmu);
-                clocks = CB_CLOCKS[cb_byte as usize];
-                Instruction::decode_cb(cb_byte)
-            }
+        let (instr, clocks) = if self.halt {
+            (Instruction::HALT, 4)
+        } else {
+            self.fetch_instr(mmu)
         };
 
-        if !self.halt {
+        if self.interrupt_exists(mmu) {
+            // effect of EI is delayed one instruction
+            if self.last_instr == Instruction::EI {
+                self.execute(mmu, instr);
+            }
+            self.handle_interrupt(mmu);
+        } else if !self.halt {
             self.execute(mmu, instr);
         }
 
+        self.last_instr = instr;
         clocks
     }
 
@@ -1223,12 +1213,15 @@ impl CPU {
         let i_f = mmu.rb(0xFF0F);
         let e_f = e_i & i_f;
         let index = e_f.trailing_zeros();
-//        println!("OLD IF: {:b}", i_f);
         mmu.wb(0xFF0F, i_f & !(1 << index));
-//        println!("NEW IF: {:b}", mmu.rb(0xFF0F));
 
-        self.push(mmu, self.reg.pc);
-        self.reg.sp = self.reg.sp.wrapping_sub(2);
+        // because EI is delayed, we don't have to return to the
+        // instruction that we would have skipped otherwise
+        if self.last_instr == Instruction::EI {
+            self.push(mmu, self.reg.pc);
+        } else {
+            self.push(mmu, self.reg.pc - 1);
+        }
         self.reg.pc = match index {
             0 => 0x40, // VBlank
             1 => 0x48, // LCD Stat
@@ -1237,6 +1230,23 @@ impl CPU {
             4 => 0x60, // Joypad press
             _ => panic!("unrecognized interrupt: {:#b}", e_f),
         };
+    }
+
+    pub fn fetch_instr(&mut self, mmu: &MMU) -> (Instruction, u8) {
+        let byte = self.get_imm8(mmu);
+        match byte {
+            0xCB => {
+                let cb_byte = self.get_imm8(mmu);
+                let instr = Instruction::decode_cb(cb_byte);
+                let clocks = CB_CLOCKS[cb_byte as usize];
+                (instr, clocks)
+            },
+            _ => {
+                let instr = Instruction::decode(byte);
+                let clocks = CLOCKS[byte as usize];
+                (instr, clocks)
+            },
+        }
     }
 
     pub fn get_imm16(&mut self, mmu: &MMU) -> u16 {

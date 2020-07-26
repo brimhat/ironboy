@@ -12,10 +12,12 @@ pub struct MMU<'a> {
 
 impl<'a> MMU<'a> {
     pub fn new(cartridge: &'a mut Cartridge) -> MMU {
+        let mut mem = [0; MEM_SIZE];
+        mem[0xFF0F] = 1; // if display is disabled, V-Blank is on
         MMU {
             boot: [0; 0x100],
             cartridge,
-            mem: [0; MEM_SIZE],
+            mem,
             reset_div: false,
         }
     }
@@ -50,6 +52,18 @@ impl<'a> MMU<'a> {
     }
 
     pub fn wb(&mut self, address: u16, value: u8) {
+        if address == 0xFF40 {
+            if (self.mem[0xFF40] & 0x80) == 1 && (value & 0x80) == 0 {
+                if self.mem[0xFF0F] & 0b1 == 0 {
+                    panic!("LCD turned off while not in V-Blank")
+                }
+            }
+        }
+        if address == 0xFF0F {
+            self.mem[0xFF0F] = 0b1110_0000 | value;
+            return;
+        }
+
         if address == 0xFF04 {
             // if divider is written to, div and system internal counter set to 0
             self.reset_div = true;

@@ -1,6 +1,22 @@
 use crate::cartridge::{Cartridge, KILOBYTE, MEGABYTE, ROM_BANK_SIZE, RAM_BANK_SIZE};
 use crate::mmu::MMU;
 
+pub fn cartridge_0b() -> Cartridge {
+    let mut rom: Vec<u8> = vec![0; 32 * KILOBYTE as usize];
+    rom[0x147] = 0;
+    rom[0x148] = 0;
+    rom[0x149] = 0;
+    rom[0x27EB] = 0x20;
+    rom[0x3FFF] = 0x3E;
+    rom[0x5A74] = 0x53;
+    rom[0x7FFF] = 0x80;
+
+    match Cartridge::new(rom) {
+        Err(e) => panic!("Error loading cartridge: {:#?}", e),
+        Ok(c) => c,
+    }
+}
+
 pub fn cartridge_4b() -> Cartridge {
     let mut rom: Vec<u8> = vec![0; 64 * KILOBYTE as usize];
     rom[0x147] = 1;
@@ -27,7 +43,25 @@ pub fn cartridge_128b() -> Cartridge {
 }
 
 #[test]
-fn mbc1_banking_mode_on() {
+fn no_mbc_read() {
+    let mut cartridge = cartridge_0b();
+    let mut mmu = MMU::new(&mut cartridge);
+    let lower_1 = mmu.rb(0x27EB);
+    let expected_lower_1 = 0x20;
+    assert_eq!(lower_1, expected_lower_1);
+    let lower_2 = mmu.rb(0x3FFF);
+    let expected_lower_2 = 0x3E;
+    assert_eq!(lower_2, expected_lower_2);
+    let upper_1 = mmu.rb(0x5A74);
+    let expected_upper_1 = 0x53;
+    assert_eq!(upper_1, expected_upper_1);
+    let upper_2 = mmu.rb(0x7FFF);
+    let expected_upper_2 = 0x80;
+    assert_eq!(upper_2, expected_upper_2);
+}
+
+#[test]
+fn mbc1_bank_mode_on() {
     let mut cartridge = cartridge_4b();
     let mut mmu = MMU::new(&mut cartridge);
     mmu.wb(0x3FFF, 0b0001_0010); // Bank 1 register
@@ -39,7 +73,7 @@ fn mbc1_banking_mode_on() {
 }
 
 #[test]
-fn mbc1_banking_mode_off() {
+fn mbc1_bank_mode_off() {
     let mut cartridge = cartridge_4b();
     let mut mmu = MMU::new(&mut cartridge);
     mmu.wb(0x3FFF, 0b0001_0010); // Bank 1 register

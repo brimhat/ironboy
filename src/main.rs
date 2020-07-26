@@ -23,7 +23,7 @@ use crate::timer::Timer;
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/02-interrupts.gb";
+    let path = "ROMS/mooneye-test-roms/acceptance/rst_timing.gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -31,14 +31,26 @@ fn main() {
     match file.read_to_end(&mut test) {
         Err(e) => panic!("{}", e),
         Ok(_) => (),
-    };
+    }
     let mut cartridge = match Cartridge::new(test) {
-        Err(e) => panic!("Error loading cartridge: {:#?}", e),
+        Err(e) => panic!("Error loading cartridge: {:?}", e),
         Ok(c) => c,
     };
 
+    let mut boot = Vec::<u8>::new();
+    let boot_path = "ROMS/DMG_ROM.bin";
+    file = match File::open(boot_path) {
+        Err(e) => panic!("{}", e),
+        Ok(f) => f,
+    };
+    match file.read_to_end(&mut boot) {
+        Err(e) => panic!("{}", e),
+        Ok(_) => (),
+    }
+
     let mut timer = Timer::new();
     let mut mmu = MMU::new(&mut cartridge);
+    mmu.read_boot(&boot);
     let mut cpu = CPU::new();
     let mut ppu = PPU::new();
 

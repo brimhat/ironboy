@@ -34,7 +34,7 @@ pub struct PPU {
 impl PPU {
     pub fn new() -> PPU {
         PPU {
-            mode: Mode::OAMSearch,
+            mode: Mode::VBlank,
             mode_clock: 0,
             data: [[0; SCREEN_W]; SCREEN_H],
             update_screen: false,
