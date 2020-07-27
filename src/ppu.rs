@@ -107,6 +107,7 @@ impl PPU {
                 self.draw_bg(mmu);
                 // draw sprites line at LY
                 if lcdc & 0b10 != 0 {
+                    println!("WRITING SPRITES");
                     self.draw_obj(mmu);
                 }
             }
@@ -126,15 +127,14 @@ impl PPU {
         let lcdc = mmu.rb(0xFF40);
         let ly = self.get_ly(mmu);
 
-        let tile_start = if lcdc & (1 << 4) == 0 {
+        let bg_map0 = lcdc & (1 << 3) == 0;
+        let win_map0 = lcdc & (1 << 6) == 0;
+        let tile_set0 = lcdc & (1 << 4) == 0;
+        let tile_start = if tile_set0 {
             TILE_SET0
         } else {
             TILE_SET1
         };
-
-        let tile_set0 = lcdc & (1 << 4) == 0;
-        let win_map0 = lcdc & (1 << 6) == 0;
-        let bg_map0 = lcdc & (1 << 3) == 0;
 
         let y_in_win = ly >= wy && lcdc & (1 << 5) != 0;
         let y = if y_in_win {
@@ -164,9 +164,9 @@ impl PPU {
             let tile_map_index = mmu.rb(tile_map_address);
             // grab two bytes
             // each tile is 16 bytes long (8x8 pixels of 2-bit color)
-            // if the TILE_SET0 in use, the indicies are signed
+            // if TILE_SET0 in use, the indicies are signed
             let tile_map_offset = if tile_set0 {
-                128 + ((tile_map_index as i8 as i16) + 128) as u16
+                (tile_map_index as i8 as i16 + 256) as u16
             } else {
                 tile_map_index as u16
             };
@@ -174,6 +174,9 @@ impl PPU {
             let tile_idx = tile_map_offset * 16;
             let tile_row = (y as u16 % 8) * 2;
             let index = tile_start + tile_idx + tile_row;
+            if mmu.rb(0xFF50) != 0 {
+                println!("{:#X} => {:#X} => {:#X}", tile_map_index, tile_map_offset, index);
+            }
             let byte1 = mmu.rb(index);
             let byte2 = mmu.rb(index + 1);
             // convert bits to color

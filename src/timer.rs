@@ -21,8 +21,8 @@ impl Timer {
         self.counter = self.counter.wrapping_add(t_clocks as u16);
         mmu.write_div((self.counter >> 8) as u8);
 
-        let tac = mmu.rb(0xFF07);
         // if bit 2 of tac is 0, timer is not running (but div is ALWAYS counting)
+        let tac = mmu.rb(0xFF07);
         if (tac & 0b0100) == 0 {
             return;
         }

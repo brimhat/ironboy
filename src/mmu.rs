@@ -1,5 +1,4 @@
 use crate::cartridge::Cartridge;
-use crate::timer::Timer;
 
 const MEM_SIZE: usize = 0xFFFF + 1;
 
@@ -52,17 +51,14 @@ impl<'a> MMU<'a> {
     }
 
     pub fn wb(&mut self, address: u16, value: u8) {
-        if address == 0xFF40 {
-            if (self.mem[0xFF40] & 0x80) == 1 && (value & 0x80) == 0 {
-                if self.mem[0xFF0F] & 0b1 == 0 {
-                    panic!("LCD turned off while not in V-Blank")
-                }
-            }
-        }
         if address == 0xFF0F {
             self.mem[0xFF0F] = 0b1110_0000 | value;
             return;
         }
+
+//        if self.mem[0xFF50] != 0 && address >= 0x8000 && address <= 0x9FFF && value != 0 {
+//            println!("[{:#X}] = {:#X}", address, value)
+//        }
 
         if address == 0xFF04 {
             // if divider is written to, div and system internal counter set to 0

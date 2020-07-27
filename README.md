@@ -3,6 +3,7 @@
 ironboy is a Game Boy emulator written in Rust.
 
 ## Things I may do in the future:
+ * More accurate timer emulation
  * Implement the APU
  * Serialization
  * Use a different GUI

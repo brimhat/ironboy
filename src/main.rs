@@ -10,7 +10,6 @@ mod test {
     mod cartridge;
 }
 
-use std::io;
 use std::io::prelude::*;
 use std::fs::File;
 use std::result::Result;
@@ -23,7 +22,7 @@ use crate::timer::Timer;
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/mooneye-test-roms/acceptance/rst_timing.gb";
+    let path = "ROMS/tetris_jue1.1.gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
