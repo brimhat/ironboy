@@ -1170,6 +1170,7 @@ impl CPU {
     }
 
     pub fn step(&mut self, mmu: &mut MMU) -> u8 {
+        let last_pc = self.reg.pc;
         let (instr, clocks) = if self.halt {
             (Instruction::HALT, 4)
         } else {
@@ -1183,7 +1184,13 @@ impl CPU {
             }
             self.handle_interrupt(mmu);
         } else if !self.halt {
+            let i_f = mmu.rb(0xFF0F) & 0b0001_1111;
+            let e_i = mmu.rb(0xFFFF);
+//            if mmu.rb(0xFF50) != 0 {
+//                println!("({:#X}) {:?} IF: {:#b} EI: {:#b}", last_pc, instr, i_f, e_i);
+//            }
             self.execute(mmu, instr);
+//            if last_pc == 0x0392 { panic!("{:#X}", self.reg.pc) }
         }
 
         self.last_instr = instr;

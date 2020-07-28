@@ -100,7 +100,7 @@ impl Cartridge {
             _ => return Err(CartridgeError::UnsupportedMBC)
         };
 
-        let title = match String::from_utf8(data[0x134..0x143].to_owned()) {
+        let title = match String::from_utf8(data[0x134..0x13F].to_owned()) {
             Err(e) => panic!("Error loading cartridge title: {}", e),
             Ok(s) => s,
         };

@@ -7,17 +7,17 @@ pub struct MMU<'a> {
     cartridge: &'a mut Cartridge,
     mem: [u8; MEM_SIZE],
     pub reset_div: bool,
+    pub update_screen: bool,
 }
 
 impl<'a> MMU<'a> {
     pub fn new(cartridge: &'a mut Cartridge) -> MMU {
-        let mut mem = [0; MEM_SIZE];
-        mem[0xFF0F] = 1; // if display is disabled, V-Blank is on
         MMU {
             boot: [0; 0x100],
             cartridge,
-            mem,
+            mem: [0; MEM_SIZE],
             reset_div: false,
+            update_screen: false,
         }
     }
 
@@ -55,10 +55,30 @@ impl<'a> MMU<'a> {
             self.mem[0xFF0F] = 0b1110_0000 | value;
             return;
         }
-
-//        if self.mem[0xFF50] != 0 && address >= 0x8000 && address <= 0x9FFF && value != 0 {
-//            println!("[{:#X}] = {:#X}", address, value)
+//        if self.mem[0xFF50] != 0 {
+//            println!("MEM[{:#X}] = {:#X}", address, value);
 //        }
+//        if address >= 0x9800 && address <= 0x9BFF && self.mem[0xFF50] != 0 {
+////            if value != 0 && value != 0x2F {
+////                println!("MAP0[{:#X}] = {:#X}", address, value);
+////            }
+//            if value == 0x2F {
+//                print!(".");
+//            } else if value == 0 {
+//                print!("_");
+//            } else {
+//                println!("MAP0[{:#X}] = {:#X}", address, value);
+//            }
+//        }
+
+        if address == 0xFF40 {
+            if (value & 0x80) != 0 && (self.mem[0xFF40] & 0x80) == 0 {
+                println!("LCD ON");
+                self.update_screen = true;
+            } else if (value & 0x80) == 0 && (self.mem[0xFF40] & 0x80) != 0 {
+                println!("LCD OFF");
+            }
+        }
 
         if address == 0xFF04 {
             // if divider is written to, div and system internal counter set to 0

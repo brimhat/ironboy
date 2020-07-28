@@ -10,7 +10,7 @@ const LIGHTEST: u32 = 0xFF9BBC0F;
 
 const TILE_MAP0: u16 = 0x9800;
 const TILE_MAP1: u16 = 0x9C00;
-const TILE_SET0: u16 = 0x8800;
+const TILE_SET0: u16 = 0x9000;
 const TILE_SET1: u16 = 0x8000;
 const OAM_START: u16 = 0xF300;
 const OAM_SEARCH_END: u16 = 80;
@@ -18,10 +18,10 @@ const PIXEL_TRANSFER_END: u16 = (80 + 172);
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
-    OAMSearch       = 0b0010_0000,
-    PixelTransfer,
-    HBlank          = 0b0000_1000,
-    VBlank          = 0b0001_0000,
+    OAMSearch       = 0b0000_0010,
+    PixelTransfer   = 0b0000_0011,
+    HBlank          = 0b0000_0000,
+    VBlank          = 0b0000_0001,
 }
 
 pub struct PPU {
@@ -35,7 +35,7 @@ impl PPU {
     pub fn new() -> PPU {
         PPU {
             mode: Mode::VBlank,
-            mode_clock: 0,
+            mode_clock: 20,
             data: [[0; SCREEN_W]; SCREEN_H],
             update_screen: false,
         }
@@ -52,9 +52,22 @@ impl PPU {
     pub fn set_stat(&self, mmu: &mut MMU, mode: Mode) {
         let lyc = mmu.rb(0xFF45);
         let stat = mmu.rb(0xFF41);
-        let clean_stat = stat & 0b1000_0111;
-        let coincidence: u8 = if self.get_ly(mmu) == lyc { 0b0100_0000 } else { 0 };
-        mmu.wb(0xFF41, clean_stat | coincidence | mode as u8);
+        let clean_stat = stat & 0b1111_1000;
+        let coincidence: u8 = if self.get_ly(mmu) == lyc { 0b0000_0100 } else { 0 };
+
+        let mode_bits = match (stat & 0x3F) >> 4 {
+            0b111 => mode as u8,
+            0b110 => if mode == Mode::HBlank { 0 } else { mode as u8 },
+            0b101 => if mode == Mode::VBlank { 0 } else { mode as u8 },
+            0b011 => if mode == Mode::OAMSearch { 0 } else { mode as u8 },
+            0b100 => if mode != Mode::OAMSearch { 0 } else { mode as u8 },
+            0b001 => if mode != Mode::HBlank { 0 } else { mode as u8 },
+            0b010 => if mode != Mode::VBlank { 0 } else { mode as u8 },
+            0b000 => if mode != Mode::PixelTransfer { 0 } else { mode as u8 },
+            _ => panic!("Unrecognized 3 bit pattern in STAT: {:#b}", (stat & 0x3F) >> 4)
+        };
+
+        mmu.wb(0xFF41, clean_stat | coincidence | mode_bits);
 
         let i_f = mmu.rb(0xFF0F);
         mmu.wb(0xFF0F, i_f | 0x02);
@@ -72,13 +85,14 @@ impl PPU {
 
     pub fn step(&mut self, mmu: &mut MMU, clocks: u8) {
         let lcdc = mmu.rb(0xFF40);
-        if (lcdc >> 7) == 0 || clocks == 0 {
+        if (lcdc & 0x80) == 0 || clocks == 0 {
             return;
         }
 
+        let i_f = mmu.rb(0xFF0F);
         let stat = mmu.rb(0xFF41);
 
-        self.mode_clock += clocks as u16;
+        self.mode_clock += 80; //clocks as u16;
         if self.mode_clock >= 456 {
             self.inc_ly(mmu);
             self.mode_clock %= 456;
@@ -88,33 +102,33 @@ impl PPU {
             if self.mode != Mode::VBlank {
                 self.update_screen = true;
                 self.mode = Mode::VBlank;
-                let i_f = mmu.rb(0xFF0F);
                 mmu.wb(0xFF0F, i_f | 0x01);
                 if (stat & Mode::VBlank as u8) == 0 {
                     self.set_stat(mmu, Mode::VBlank);
                 }
             }
         } else if self.mode_clock <= OAM_SEARCH_END {
-            self.mode = Mode::OAMSearch;
-            if (stat & Mode::OAMSearch as u8) == 0 {
-                self.set_stat(mmu, Mode::OAMSearch);
-            }
-        } else if self.mode_clock <= PIXEL_TRANSFER_END {
-            // only write line once
-            if self.mode != Mode::PixelTransfer {
-                self.mode = Mode::PixelTransfer;
-                // draw background line at LY
-                self.draw_bg(mmu);
-                // draw sprites line at LY
-                if lcdc & 0b10 != 0 {
-                    println!("WRITING SPRITES");
-                    self.draw_obj(mmu);
+            if self.mode != Mode::OAMSearch {
+                self.mode = Mode::OAMSearch;
+                if (stat & Mode::OAMSearch as u8) == 0 {
+                    self.set_stat(mmu, Mode::OAMSearch);
                 }
             }
+        } else if self.mode_clock <= PIXEL_TRANSFER_END {
+            if self.mode != Mode::PixelTransfer {
+                self.mode = Mode::PixelTransfer;
+                self.draw_bg(mmu);
+//                if lcdc & 0b10 != 0 {
+//                    panic!("WRITING SPRITES");
+//                    self.draw_obj(mmu);
+//                }
+            }
         } else {
-            self.mode = Mode::HBlank;
-            if (stat & Mode::HBlank as u8) == 0 {
-                self.set_stat(mmu, Mode::HBlank);
+            if self.mode != Mode::HBlank {
+                self.mode = Mode::HBlank;
+                if (stat & Mode::HBlank as u8) == 0 {
+                    self.set_stat(mmu, Mode::HBlank);
+                }
             }
         }
     }
@@ -130,11 +144,12 @@ impl PPU {
         let bg_map0 = lcdc & (1 << 3) == 0;
         let win_map0 = lcdc & (1 << 6) == 0;
         let tile_set0 = lcdc & (1 << 4) == 0;
-        let tile_start = if tile_set0 {
-            TILE_SET0
-        } else {
-            TILE_SET1
-        };
+        let tile_start = TILE_SET1;
+//        let tile_start = if tile_set0 {
+//            TILE_SET0
+//        } else {
+//            TILE_SET1
+//        };
 
         let y_in_win = ly >= wy && lcdc & (1 << 5) != 0;
         let y = if y_in_win {
@@ -142,19 +157,23 @@ impl PPU {
         } else {
             ly.wrapping_add(scy)
         };
+//        let map_y = (y as u16 >> 3) & 31;
         for i in 0..SCREEN_W {
             let writing_win = (i as u8) >= wx && y_in_win;
             let x = if writing_win {
+                println!("WRITING WIN");
                 (i as u8) - wx
             } else {
                 (i as u8).wrapping_add(scx)
             };
+//            let map_x = (x as u16 >> 3) & 31;
 
-            let map_start = if (writing_win && win_map0) || (!writing_win && bg_map0) {
-                TILE_MAP0
-            } else {
-                TILE_MAP1
-            };
+            let map_start = TILE_MAP0;
+//            let map_start = if (writing_win && win_map0) || (!writing_win && bg_map0) {
+//                TILE_MAP0
+//            } else {
+//                TILE_MAP1
+//            };
 
             // grab tile num from tile map
             // tile map is 32x32 tiles in length
@@ -162,21 +181,30 @@ impl PPU {
             let map_x = (x / 8) as u16;
             let tile_map_address = map_start + (map_y * 32 + map_x);
             let tile_map_index = mmu.rb(tile_map_address);
+//            if mmu.rb(0xFF50) != 0 {
+//                if tile_map_index == 0x2F {
+//                    print!("-");
+//                } else {
+//                    print!("#");
+//                }
+////                println!("[{:#X}] = {:#X}\t--------", tile_map_address, tile_map_index);
+//            }
             // grab two bytes
             // each tile is 16 bytes long (8x8 pixels of 2-bit color)
             // if TILE_SET0 in use, the indicies are signed
-            let tile_map_offset = if tile_set0 {
-                (tile_map_index as i8 as i16 + 256) as u16
-            } else {
-                tile_map_index as u16
-            };
+            let tile_map_offset = tile_map_index as u16;
+//            let tile_map_offset = if tile_set0 {
+//                tile_map_index as i8 as u16
+//            } else {
+//                tile_map_index as u16
+//            };
 
             let tile_idx = tile_map_offset * 16;
             let tile_row = (y as u16 % 8) * 2;
             let index = tile_start + tile_idx + tile_row;
-            if mmu.rb(0xFF50) != 0 {
-                println!("{:#X} => {:#X} => {:#X}", tile_map_index, tile_map_offset, index);
-            }
+//            if mmu.rb(0xFF50) != 0 {
+//                println!("{:#X} => {} => {:#X}", tile_map_index, tile_map_offset, index);
+//            }
             let byte1 = mmu.rb(index);
             let byte2 = mmu.rb(index + 1);
             // convert bits to color

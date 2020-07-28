@@ -10,6 +10,7 @@ mod test {
     mod cartridge;
 }
 
+use std::ffi::CStr;
 use std::io::prelude::*;
 use std::fs::File;
 use std::result::Result;
@@ -47,26 +48,47 @@ fn main() {
         Ok(_) => (),
     }
 
+    let title = {
+        let mut end_of_title: usize = 1;
+        let mut cart_title = cartridge.title.as_bytes();
+        while cart_title[end_of_title - 1] != 0 {
+            end_of_title += 1;
+            if end_of_title == cartridge.title.len() {
+                cartridge.title.push_str("\0");
+                end_of_title += 1;
+                break;
+            }
+        }
+        let title_bytes = &cartridge.title[0..end_of_title];
+        match CStr::from_bytes_with_nul(title_bytes.as_ref()) {
+            Err(e) => panic!("{}", e),
+            Ok(cstr) => match cstr.to_str() {
+                Err(e) => panic!("{}", e),
+                Ok(s) => s,
+            },
+        }
+    };
+
+    let mut buffer: [u32; SCREEN_W * SCREEN_H] = [0; SCREEN_H * SCREEN_W];
+    let mut window = Window::new(
+        title, //"Press ESC to exit",
+        SCREEN_W,
+        SCREEN_H,
+        WindowOptions::default()
+    ).unwrap_or_else(|e| { panic!("{}", e) });
+
     let mut timer = Timer::new();
     let mut mmu = MMU::new(&mut cartridge);
     mmu.read_boot(&boot);
     let mut cpu = CPU::new();
     let mut ppu = PPU::new();
 
-    let mut buffer: [u32; SCREEN_W * SCREEN_H] = [0; SCREEN_H * SCREEN_W];
-    let mut window = Window::new(
-        "Press ESC to exit",
-        SCREEN_W,
-        SCREEN_H,
-        WindowOptions::default()
-    ).unwrap_or_else(|e| { panic!("{}", e) });
-
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let clocks = cpu.step(&mut mmu);
         timer.step(&mut mmu, clocks);
         ppu.step(&mut mmu, clocks);
 
-        if ppu.update_screen {
+        if ppu.update_screen || mmu.update_screen {
             let mut i = 0;
             for row in ppu.data.iter() {
                 for pixel in row.iter() {
@@ -76,6 +98,7 @@ fn main() {
             }
             window.update_with_buffer(&buffer, SCREEN_W, SCREEN_H).unwrap();
             ppu.update_screen = false;
+            mmu.update_screen = false;
         }
     }
 }
