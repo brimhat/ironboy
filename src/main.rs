@@ -88,7 +88,7 @@ fn main() {
         timer.step(&mut mmu, clocks);
         ppu.step(&mut mmu, clocks);
 
-        if ppu.update_screen || mmu.update_screen {
+        if ppu.update_screen {
             let mut i = 0;
             for row in ppu.data.iter() {
                 for pixel in row.iter() {
@@ -98,7 +98,7 @@ fn main() {
             }
             window.update_with_buffer(&buffer, SCREEN_W, SCREEN_H).unwrap();
             ppu.update_screen = false;
-            mmu.update_screen = false;
+//            mmu.update_screen = false;
         }
     }
 }

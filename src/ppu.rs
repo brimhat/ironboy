@@ -34,8 +34,8 @@ pub struct PPU {
 impl PPU {
     pub fn new() -> PPU {
         PPU {
-            mode: Mode::VBlank,
-            mode_clock: 20,
+            mode: Mode::OAMSearch,
+            mode_clock: 80,
             data: [[0; SCREEN_W]; SCREEN_H],
             update_screen: false,
         }
@@ -55,7 +55,7 @@ impl PPU {
         let clean_stat = stat & 0b1111_1000;
         let coincidence: u8 = if self.get_ly(mmu) == lyc { 0b0000_0100 } else { 0 };
 
-        let mode_bits = match (stat & 0x3F) >> 4 {
+        let mode_bits = match (stat & 0x3F) >> 3 {
             0b111 => mode as u8,
             0b110 => if mode == Mode::HBlank { 0 } else { mode as u8 },
             0b101 => if mode == Mode::VBlank { 0 } else { mode as u8 },
@@ -92,7 +92,8 @@ impl PPU {
         let i_f = mmu.rb(0xFF0F);
         let stat = mmu.rb(0xFF41);
 
-        self.mode_clock += 80; //clocks as u16;
+//        println!("{:?}", self.mode);
+        self.mode_clock += (clocks + 8) as u16; //clocks as u16;
         if self.mode_clock >= 456 {
             self.inc_ly(mmu);
             self.mode_clock %= 456;

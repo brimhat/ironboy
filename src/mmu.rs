@@ -55,30 +55,6 @@ impl<'a> MMU<'a> {
             self.mem[0xFF0F] = 0b1110_0000 | value;
             return;
         }
-//        if self.mem[0xFF50] != 0 {
-//            println!("MEM[{:#X}] = {:#X}", address, value);
-//        }
-//        if address >= 0x9800 && address <= 0x9BFF && self.mem[0xFF50] != 0 {
-////            if value != 0 && value != 0x2F {
-////                println!("MAP0[{:#X}] = {:#X}", address, value);
-////            }
-//            if value == 0x2F {
-//                print!(".");
-//            } else if value == 0 {
-//                print!("_");
-//            } else {
-//                println!("MAP0[{:#X}] = {:#X}", address, value);
-//            }
-//        }
-
-        if address == 0xFF40 {
-            if (value & 0x80) != 0 && (self.mem[0xFF40] & 0x80) == 0 {
-                println!("LCD ON");
-                self.update_screen = true;
-            } else if (value & 0x80) == 0 && (self.mem[0xFF40] & 0x80) != 0 {
-                println!("LCD OFF");
-            }
-        }
 
         if address == 0xFF04 {
             // if divider is written to, div and system internal counter set to 0
