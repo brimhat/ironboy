@@ -4,6 +4,7 @@ mod cpu;
 mod ppu;
 mod cartridge;
 mod timer;
+mod interrupts;
 mod test {
     mod cpu;
     mod timer;
@@ -14,16 +15,19 @@ use std::ffi::CStr;
 use std::io::prelude::*;
 use std::fs::File;
 use std::result::Result;
+use std::rc::Rc;
+use std::cell::RefCell;
 use minifb::{Key, Window, WindowOptions};
 use crate::cpu::CPU;
 use crate::mmu::MMU;
 use crate::ppu::{PPU, SCREEN_W, SCREEN_H};
 use crate::cartridge::Cartridge;
 use crate::timer::Timer;
+use crate::interrupts::IntReq;
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/tetris_jue1.1.gb";
+    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/02-interrupts.gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -77,15 +81,15 @@ fn main() {
         WindowOptions::default()
     ).unwrap_or_else(|e| { panic!("{}", e) });
 
-    let mut timer = Timer::new();
-    let mut mmu = MMU::new(&mut cartridge);
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let mut mmu = MMU::new(&mut cartridge, timer.clone());
     mmu.read_boot(&boot);
-    let mut cpu = CPU::new();
-    let mut ppu = PPU::new();
+    let mut cpu = CPU::new(timer.clone());
+    let mut ppu = PPU::new(intr.clone());
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let clocks = cpu.step(&mut mmu);
-        timer.step(&mut mmu, clocks);
         ppu.step(&mut mmu, clocks);
 
         if ppu.update_screen {
@@ -98,7 +102,6 @@ fn main() {
             }
             window.update_with_buffer(&buffer, SCREEN_W, SCREEN_H).unwrap();
             ppu.update_screen = false;
-//            mmu.update_screen = false;
         }
     }
 }

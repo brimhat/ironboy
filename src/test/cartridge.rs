@@ -1,5 +1,9 @@
 use crate::cartridge::{Cartridge, KILOBYTE, MEGABYTE, ROM_BANK_SIZE, RAM_BANK_SIZE};
 use crate::mmu::MMU;
+use crate::interrupts::IntReq;
+use crate::timer::Timer;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub fn cartridge_0b() -> Cartridge {
     let mut rom: Vec<u8> = vec![0; 32 * KILOBYTE as usize];
@@ -44,8 +48,10 @@ pub fn cartridge_128b() -> Cartridge {
 
 #[test]
 fn no_mbc_read() {
+    let mut intr = Rc::new(RefCell::new(IntReq::new()));
+    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_0b();
-    let mut mmu = MMU::new(&mut cartridge);
+    let mut mmu = MMU::new(&mut cartridge, timer.clone());
     let lower_1 = mmu.rb(0x27EB);
     let expected_lower_1 = 0x20;
     assert_eq!(lower_1, expected_lower_1);
@@ -62,8 +68,10 @@ fn no_mbc_read() {
 
 #[test]
 fn mbc1_bank_mode_on() {
+    let mut intr = Rc::new(RefCell::new(IntReq::new()));
+    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_4b();
-    let mut mmu = MMU::new(&mut cartridge);
+    let mut mmu = MMU::new(&mut cartridge, timer.clone());
     mmu.wb(0x3FFF, 0b0001_0010); // Bank 1 register
     mmu.wb(0x5FFF, 0b1111_0101); // Bank 2 register
     mmu.wb(0x7FFF, 0b1000_0001); // Mode register ON
@@ -74,8 +82,10 @@ fn mbc1_bank_mode_on() {
 
 #[test]
 fn mbc1_bank_mode_off() {
+    let mut intr = Rc::new(RefCell::new(IntReq::new()));
+    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_4b();
-    let mut mmu = MMU::new(&mut cartridge);
+    let mut mmu = MMU::new(&mut cartridge, timer.clone());
     mmu.wb(0x3FFF, 0b0001_0010); // Bank 1 register
     mmu.wb(0x5FFF, 0b1111_0101); // Bank 2 register
     mmu.wb(0x7FFF, 0b1000_0000); // Mode register OFF
@@ -86,8 +96,10 @@ fn mbc1_bank_mode_off() {
 
 #[test]
 fn mbc1_read_bank() {
+    let mut intr = Rc::new(RefCell::new(IntReq::new()));
+    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_128b();
-    let mut mmu = MMU::new(&mut cartridge);
+    let mut mmu = MMU::new(&mut cartridge, timer.clone());
     mmu.wb(0x3FFF, 0b0000_0100); // Bank 1 register
     mmu.wb(0x5FFF, 0b0000_0010); // Bank 2 register
     mmu.wb(0x7FFF, 0b1000_0000); // Mode register OFF

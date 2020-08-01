@@ -1,4 +1,7 @@
 use crate::mmu::MMU;
+use crate::interrupts::*;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub const SCREEN_W: usize = 160;
 pub const SCREEN_H: usize = 144;
@@ -27,15 +30,17 @@ pub enum Mode {
 pub struct PPU {
     mode: Mode,
     mode_clock: u16,
+    intr: Rc<RefCell<IntReq>>,
     pub data: [[u32; SCREEN_W]; SCREEN_H],
     pub update_screen: bool,
 }
 
 impl PPU {
-    pub fn new() -> PPU {
+    pub fn new(intr: Rc<RefCell<IntReq>>) -> PPU {
         PPU {
             mode: Mode::OAMSearch,
             mode_clock: 80,
+            intr,
             data: [[0; SCREEN_W]; SCREEN_H],
             update_screen: false,
         }
@@ -68,9 +73,7 @@ impl PPU {
         };
 
         mmu.wb(0xFF41, clean_stat | coincidence | mode_bits);
-
-        let i_f = mmu.rb(0xFF0F);
-        mmu.wb(0xFF0F, i_f | 0x02);
+        self.intr.borrow_mut().set_flag(IntFlag::Stat);
     }
 
     pub fn get_color_from(pair: u8) -> u32 {
@@ -89,11 +92,9 @@ impl PPU {
             return;
         }
 
-        let i_f = mmu.rb(0xFF0F);
         let stat = mmu.rb(0xFF41);
 
-//        println!("{:?}", self.mode);
-        self.mode_clock += (clocks + 8) as u16; //clocks as u16;
+        self.mode_clock += clocks as u16; //clocks as u16;
         if self.mode_clock >= 456 {
             self.inc_ly(mmu);
             self.mode_clock %= 456;
@@ -103,7 +104,7 @@ impl PPU {
             if self.mode != Mode::VBlank {
                 self.update_screen = true;
                 self.mode = Mode::VBlank;
-                mmu.wb(0xFF0F, i_f | 0x01);
+                self.intr.borrow_mut().set_flag(IntFlag::VBlank);
                 if (stat & Mode::VBlank as u8) == 0 {
                     self.set_stat(mmu, Mode::VBlank);
                 }

@@ -1,5 +1,8 @@
 use crate::mmu::MMU;
+use crate::timer::Timer;
 use crate::registers::{Registers, Flag};
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub const CLOCKS: [u8; 256] = [
     1,3,2,2,1,1,2,1,5,2,2,2,1,1,2,1,
@@ -41,17 +44,19 @@ pub const CB_CLOCKS: [u8; 256] = [
 
 pub struct CPU {
     pub reg: Registers,
-    pub ime: bool,
-    pub halt: bool,
+    ime: bool,
+    halt: bool,
+    pub(crate) timer: Rc<RefCell<Timer>>,
     last_instr: Instruction,
 }
 
 impl CPU {
-    pub fn new() -> CPU {
+    pub fn new(timer: Rc<RefCell<Timer>>) -> CPU {
         CPU {
             reg: Registers::new(),
             ime: false,
             halt: false,
+            timer,
             last_instr: Instruction::NULL,
         }
     }
@@ -1175,6 +1180,8 @@ impl CPU {
         } else {
             self.fetch_instr(mmu)
         };
+
+        self.timer.borrow_mut().tick_n(clocks);
 
         if self.interrupt_exists(mmu) {
             // effect of EI is delayed one instruction
