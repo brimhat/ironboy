@@ -1,4 +1,3 @@
-use crate::mmu::MMU;
 use crate::interrupts::*;
 use std::rc::Rc;
 use std::cell::RefCell;

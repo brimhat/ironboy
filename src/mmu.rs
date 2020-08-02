@@ -58,6 +58,22 @@ impl<'a> MMU<'a> {
     }
 
     pub fn wb(&mut self, address: u16, value: u8) {
+//        if address == 0xFF40 {
+//            if (value & 0x80) == 0 && (self.mem[0xFF40] & 0x80) != 0 {
+//                println!("LCD OFF")
+//            } else if (value & 0x80) != 0 && (self.mem[0xFF40] & 0x80) == 0 {
+//                println!("LCD ON")
+//            }
+//        }
+//        if self.mem[0xFF50] != 0 {
+//            if address >= 0x9800 && address <= 0x9FFF {
+//                if value != 0 && value != 0x2F {
+//                    println!("[{:#X}] = {:#X}", address, value);
+//                } else {
+//                    print!(".");
+//                }
+//            }
+//        }
         if address == 0xFF04 {
             // if divider is written to, div and system internal counter set to 0
             self.timer.borrow_mut().counter = 0;

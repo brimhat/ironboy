@@ -7,6 +7,7 @@ mod timer;
 mod interrupts;
 mod test {
     mod cpu;
+    mod ppu;
     mod timer;
     mod cartridge;
 }
@@ -27,7 +28,7 @@ use crate::interrupts::IntReq;
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/blargg-test-roms/cpu_instrs/individual/02-interrupts.gb";
+    let path = "ROMS/tetris_jue1.1.gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -89,8 +90,9 @@ fn main() {
     let mut ppu = PPU::new(intr.clone());
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        let clocks = cpu.step(&mut mmu);
-        ppu.step(&mut mmu, clocks);
+        cpu.step(&mut mmu);
+        let m_clocks = cpu.clocks_elapsed;
+        ppu.tick_n(&mut mmu, m_clocks);
 
         if ppu.update_screen {
             let mut i = 0;

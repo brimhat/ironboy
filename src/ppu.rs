@@ -17,7 +17,7 @@ const TILE_SET0: u16 = 0x9000;
 const TILE_SET1: u16 = 0x8000;
 const OAM_START: u16 = 0xF300;
 const OAM_SEARCH_END: u16 = 80;
-const PIXEL_TRANSFER_END: u16 = (80 + 172);
+const PIXEL_TRANSFER_END: u16 = 80 + 172;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
@@ -28,8 +28,8 @@ pub enum Mode {
 }
 
 pub struct PPU {
-    mode: Mode,
-    mode_clock: u16,
+    pub mode: Mode,
+    pub mode_clock: u16,
     intr: Rc<RefCell<IntReq>>,
     pub data: [[u32; SCREEN_W]; SCREEN_H],
     pub update_screen: bool,
@@ -39,7 +39,7 @@ impl PPU {
     pub fn new(intr: Rc<RefCell<IntReq>>) -> PPU {
         PPU {
             mode: Mode::OAMSearch,
-            mode_clock: 80,
+            mode_clock: 0,
             intr,
             data: [[0; SCREEN_W]; SCREEN_H],
             update_screen: false,
@@ -58,7 +58,12 @@ impl PPU {
         let lyc = mmu.rb(0xFF45);
         let stat = mmu.rb(0xFF41);
         let clean_stat = stat & 0b1111_1000;
-        let coincidence: u8 = if self.get_ly(mmu) == lyc { 0b0000_0100 } else { 0 };
+
+        let coincidence: u8 = match (stat & 0x7F) >> 6 {
+            0b1 => if self.get_ly(mmu) == lyc { 0b0100 } else { 0 },
+            0b0 => 0,
+            _ => unreachable!(),
+        };
 
         let mode_bits = match (stat & 0x3F) >> 3 {
             0b111 => mode as u8,
@@ -69,11 +74,14 @@ impl PPU {
             0b001 => if mode != Mode::HBlank { 0 } else { mode as u8 },
             0b010 => if mode != Mode::VBlank { 0 } else { mode as u8 },
             0b000 => if mode != Mode::PixelTransfer { 0 } else { mode as u8 },
-            _ => panic!("Unrecognized 3 bit pattern in STAT: {:#b}", (stat & 0x3F) >> 4)
+            _ => unreachable!()
         };
 
-        mmu.wb(0xFF41, clean_stat | coincidence | mode_bits);
-        self.intr.borrow_mut().set_flag(IntFlag::Stat);
+        let new_stat = clean_stat | coincidence | mode_bits;
+        if new_stat != clean_stat {
+            mmu.wb(0xFF41, new_stat);
+            self.intr.borrow_mut().set_flag(IntFlag::Stat);
+        }
     }
 
     pub fn get_color_from(pair: u8) -> u32 {
@@ -82,19 +90,29 @@ impl PPU {
             0b01 => LIGHT,
             0b10 => DARK,
             0b11 => DARKEST,
-            _ => panic!("Error getting color from pair: {:#X}", pair)
+            _ => unreachable!()
         }
     }
 
-    pub fn step(&mut self, mmu: &mut MMU, clocks: u8) {
+    pub fn tick_n(&mut self, mmu: &mut MMU, m_clocks: u8) {
         let lcdc = mmu.rb(0xFF40);
-        if (lcdc & 0x80) == 0 || clocks == 0 {
+        if (lcdc & 0x80) == 0 || m_clocks == 0 {
+            return;
+        }
+
+        for _ in 0..m_clocks {
+            self.tick(mmu);
+        }
+    }
+
+    pub fn tick(&mut self, mmu: &mut MMU) {
+        let lcdc = mmu.rb(0xFF40);
+        if (lcdc & 0x80) == 0 {
             return;
         }
 
         let stat = mmu.rb(0xFF41);
-
-        self.mode_clock += clocks as u16; //clocks as u16;
+        self.mode_clock += 4;
         if self.mode_clock >= 456 {
             self.inc_ly(mmu);
             self.mode_clock %= 456;

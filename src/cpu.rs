@@ -1,4 +1,5 @@
 use crate::mmu::MMU;
+use crate::ppu::PPU;
 use crate::timer::Timer;
 use crate::registers::{Registers, Flag};
 use std::rc::Rc;
@@ -46,7 +47,8 @@ pub struct CPU {
     pub reg: Registers,
     ime: bool,
     halt: bool,
-    pub(crate) timer: Rc<RefCell<Timer>>,
+    pub timer: Rc<RefCell<Timer>>,
+    pub clocks_elapsed: u8,
     last_instr: Instruction,
 }
 
@@ -57,6 +59,7 @@ impl CPU {
             ime: false,
             halt: false,
             timer,
+            clocks_elapsed: 0,
             last_instr: Instruction::NULL,
         }
     }
@@ -194,7 +197,7 @@ impl CPU {
                         self.reg.set_hl(v);
                     },
                     (Target::SP, Target::HL) => self.reg.sp = self.reg.hl(),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 }
             },
             Instruction::INC(t) => {
@@ -260,7 +263,7 @@ impl CPU {
                         self.reg.set_flag(Flag::H, (at_hl & 0x0F) == 0x0F);
                         mmu.wb(self.reg.hl(), new_hl);
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 }
             },
             Instruction::DEC(t) => {
@@ -326,7 +329,7 @@ impl CPU {
                         self.reg.set_flag(Flag::H, (at_hl & 0x0F) == 0);
                         mmu.wb(self.reg.hl(), new_hl);
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 }
             },
             Instruction::XOR(t) => {
@@ -340,7 +343,7 @@ impl CPU {
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => self.get_imm8(mmu),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.a ^= operand;
@@ -360,7 +363,7 @@ impl CPU {
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => self.get_imm8(mmu),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.a |= operand;
@@ -380,7 +383,7 @@ impl CPU {
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => self.get_imm8(mmu),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.a &= operand;
@@ -400,7 +403,7 @@ impl CPU {
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => self.get_imm8(mmu),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 let (v, c) = self.reg.a.overflowing_add(operand);
@@ -433,7 +436,7 @@ impl CPU {
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => self.get_imm8(mmu),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 let cf = self.reg.get_flag(Flag::C) as u8;
@@ -452,7 +455,7 @@ impl CPU {
                     Target::DE => self.reg.de(),
                     Target::HL => self.reg.hl(),
                     Target::SP => self.reg.sp,
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 let (v, c) = self.reg.hl().overflowing_add(operand);
@@ -473,7 +476,7 @@ impl CPU {
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => self.get_imm8(mmu),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 let (v, c) = self.reg.a.overflowing_sub(operand);
@@ -495,7 +498,7 @@ impl CPU {
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => self.get_imm8(mmu),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 let cf = self.reg.get_flag(Flag::C) as u8;
@@ -519,7 +522,7 @@ impl CPU {
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
                     Target::IMM8 => self.get_imm8(mmu),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 let (v, c) = self.reg.a.overflowing_sub(operand);
@@ -539,7 +542,7 @@ impl CPU {
                     Target::H  => self.reg.h,
                     Target::L  => self.reg.l,
                     Target::HL => mmu.rb(self.reg.hl()),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, operand & (1 << i) == 0);
@@ -559,7 +562,7 @@ impl CPU {
                         let at_hl = mmu.rb(self.reg.hl());
                         mmu.wb(self.reg.hl(), at_hl & !(1 << i));
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 }
             },
             Instruction::SET(i, t) => {
@@ -575,7 +578,7 @@ impl CPU {
                         let at_hl = mmu.rb(self.reg.hl());
                         mmu.wb(self.reg.hl(), at_hl | (1 << i));
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 }
             },
             Instruction::JR(f) => {
@@ -585,11 +588,15 @@ impl CPU {
                     JumpFlag::Z => self.reg.get_flag(Flag::Z),
                     JumpFlag::C => self.reg.get_flag(Flag::C),
                     JumpFlag::A => true,
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 let jump = self.get_imm8(mmu) as i8;
                 if should_jump {
+                    if f != JumpFlag::A {
+                        self.clocks_elapsed += 1;
+                        self.timer.borrow_mut().tick();
+                    }
                     self.reg.pc = self.reg.pc.wrapping_add(jump as u16);
                 }
             },
@@ -608,6 +615,10 @@ impl CPU {
                 };
 
                 if should_jump {
+                    if f != JumpFlag::AtHL && f != JumpFlag::A {
+                        self.clocks_elapsed += 1;
+                        self.timer.borrow_mut().tick();
+                    }
                     self.reg.pc = jump;
                 }
             },
@@ -618,11 +629,15 @@ impl CPU {
                     JumpFlag::Z => self.reg.get_flag(Flag::Z),
                     JumpFlag::C => self.reg.get_flag(Flag::C),
                     JumpFlag::A => true,
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 let jump = self.get_imm16(mmu);
                 if should_jump {
+                    if f != JumpFlag::A {
+                        self.clocks_elapsed += 3;
+                        self.timer.borrow_mut().tick_n(3);
+                    }
                     self.push(mmu, self.reg.pc);
                     self.reg.pc = jump
                 }
@@ -634,10 +649,14 @@ impl CPU {
                     JumpFlag::Z => self.reg.get_flag(Flag::Z),
                     JumpFlag::C => self.reg.get_flag(Flag::C),
                     JumpFlag::A => true,
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 if should_jump {
+                    if f != JumpFlag::A {
+                        self.clocks_elapsed += 3;
+                        self.timer.borrow_mut().tick_n(3);
+                    }
                     self.reg.pc = self.pop(mmu);
                 }
             },
@@ -647,7 +666,7 @@ impl CPU {
                     Target::BC => self.push(mmu, self.reg.bc()),
                     Target::DE => self.push(mmu, self.reg.de()),
                     Target::HL => self.push(mmu, self.reg.hl()),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 }
             },
             Instruction::POP(t) => {
@@ -657,7 +676,7 @@ impl CPU {
                     Target::BC => self.reg.set_bc(pop),
                     Target::DE => self.reg.set_de(pop),
                     Target::HL => self.reg.set_hl(pop),
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 }
             },
             Instruction::RST(t) => {
@@ -709,7 +728,7 @@ impl CPU {
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     }
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, v == 0);
@@ -761,7 +780,7 @@ impl CPU {
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, v == 0);
@@ -813,7 +832,7 @@ impl CPU {
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, v == 0);
@@ -866,13 +885,13 @@ impl CPU {
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, v == 0);
                 self.reg.set_flag(Flag::N, false);
                 self.reg.set_flag(Flag::H, false);
-                self.reg.set_flag(Flag::C, c);;
+                self.reg.set_flag(Flag::C, c);
             },
             Instruction::SLA(t) => {
                 let (v, c) = match t {
@@ -918,7 +937,7 @@ impl CPU {
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, v == 0);
@@ -970,7 +989,7 @@ impl CPU {
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, v == 0);
@@ -1022,7 +1041,7 @@ impl CPU {
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     },
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, v == 0);
@@ -1106,7 +1125,7 @@ impl CPU {
                         mmu.wb(self.reg.hl(), v);
                         v
                     }
-                    _ => panic!("Unrecognized instr: {:?}", instr)
+                    _ => unreachable!()
                 };
 
                 self.reg.set_flag(Flag::Z, v == 0);
@@ -1174,27 +1193,28 @@ impl CPU {
         }
     }
 
-    pub fn step(&mut self, mmu: &mut MMU) -> u8 {
+    pub fn step(&mut self, mmu: &mut MMU) {
         let (instr, clocks) = if self.halt {
             (Instruction::HALT, 4)
         } else {
             self.fetch_instr(mmu)
         };
 
-        self.timer.borrow_mut().tick_n(clocks);
+        self.clocks_elapsed = clocks;
 
         if self.interrupt_exists(mmu) {
             // effect of EI is delayed one instruction
             if self.last_instr == Instruction::EI {
+                self.timer.borrow_mut().tick_n(clocks);
                 self.execute(mmu, instr);
             }
             self.handle_interrupt(mmu);
         } else if !self.halt {
+            self.timer.borrow_mut().tick_n(clocks);
             self.execute(mmu, instr);
         }
 
         self.last_instr = instr;
-        clocks * 4
     }
 
     pub fn interrupt_exists(&self, mmu: &mut MMU) -> bool {
@@ -1231,7 +1251,7 @@ impl CPU {
             2 => 0x50, // Timer overflow
             3 => 0x58, // Serial link
             4 => 0x60, // Joypad press
-            _ => panic!("unrecognized interrupt: {:#b}", e_f),
+            _ => unreachable!(),
         };
     }
 
@@ -1550,7 +1570,7 @@ impl Instruction {
             0xC8 => Instruction::RET(JumpFlag::Z),
             0xC9 => Instruction::RET(JumpFlag::A),
             0xCA => Instruction::JP(JumpFlag::Z),
-            0xCB => panic!("found cb in decode."),
+            0xCB => unreachable!(),
             0xCC => Instruction::CALL(JumpFlag::Z),
             0xCD => Instruction::CALL(JumpFlag::A),
             0xCE => Instruction::ADC(Target::IMM8),
