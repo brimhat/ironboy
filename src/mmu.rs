@@ -48,6 +48,7 @@ impl<'a> MMU<'a> {
             0x0000..=0x3FFF => self.cartridge.read_lower_rom(address),
             0x4000..=0x7FFF => self.cartridge.read_upper_rom(address),
             0xA000..=0xBFFF => self.cartridge.read_ram(address),
+//            0xFF00 => 0xFF,
             0xFF04 => self.timer.borrow_mut().div,
             0xFF05 => self.timer.borrow_mut().tima,
             0xFF06 => self.timer.borrow_mut().tma,
@@ -58,22 +59,16 @@ impl<'a> MMU<'a> {
     }
 
     pub fn wb(&mut self, address: u16, value: u8) {
-//        if address == 0xFF40 {
-//            if (value & 0x80) == 0 && (self.mem[0xFF40] & 0x80) != 0 {
-//                println!("LCD OFF")
-//            } else if (value & 0x80) != 0 && (self.mem[0xFF40] & 0x80) == 0 {
-//                println!("LCD ON")
-//            }
-//        }
-//        if self.mem[0xFF50] != 0 {
-//            if address >= 0x9800 && address <= 0x9FFF {
-//                if value != 0 && value != 0x2F {
-//                    println!("[{:#X}] = {:#X}", address, value);
-//                } else {
-//                    print!(".");
-//                }
-//            }
-//        }
+        if address == 0xFF46 { // DMA Transfer
+            assert!(value <= 0xF1);
+            self.mem[0xFF46] = value;
+            let hi = (value as u16) << 8;
+            for lo in 0..0xA0 {
+                let byte = self.rb(hi | lo);
+                self.wb(0xFE00 | lo, byte);
+            }
+        }
+
         if address == 0xFF04 {
             // if divider is written to, div and system internal counter set to 0
             self.timer.borrow_mut().counter = 0;

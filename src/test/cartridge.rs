@@ -46,6 +46,18 @@ pub fn cartridge_128b() -> Cartridge {
     }
 }
 
+pub fn cartridge_mbc2() -> Cartridge {
+    let mut rom: Vec<u8> = vec![0; 64 * KILOBYTE as usize];
+    rom[0x147] = 5;
+    rom[0x148] = 1;
+    rom[0x149] = 0;
+
+    match Cartridge::new(rom) {
+        Err(e) => panic!("Error loading cartridge: {:#?}", e),
+        Ok(c) => c
+    }
+}
+
 #[test]
 fn no_mbc_read() {
     let mut intr = Rc::new(RefCell::new(IntReq::new()));
@@ -110,4 +122,23 @@ fn mbc1_read_bank() {
     let expected_bank_number: u32 = 0b0100_0100;
     assert_eq!(expected_bank_number, bank_number / ROM_BANK_SIZE);
     assert_eq!(expected_read_value, read_value);
+}
+
+#[test]
+fn mbc2_read_ram() {
+    let mut intr = Rc::new(RefCell::new(IntReq::new()));
+    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let mut cartridge = cartridge_mbc2();
+    let mut mmu = MMU::new(&mut cartridge, timer.clone());
+    mmu.wb(0x3EFF, 0b1010); // should enable ram
+    mmu.wb(0xA000, 0x2F);
+
+    let expected_read_value = 0x0F;
+    let read_value = mmu.rb(0xA200);
+    assert_eq!(expected_read_value, read_value);
+
+    mmu.wb(0x3000, 0); // should disable ram
+    let expected_undefined = 0xFD;
+    let read_value2 = mmu.rb(0xA400);
+    assert_eq!(expected_undefined, read_value2);
 }

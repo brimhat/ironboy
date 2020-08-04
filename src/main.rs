@@ -4,6 +4,7 @@ mod cpu;
 mod ppu;
 mod cartridge;
 mod timer;
+mod joypad;
 mod interrupts;
 mod test {
     mod cpu;
@@ -18,17 +19,29 @@ use std::fs::File;
 use std::result::Result;
 use std::rc::Rc;
 use std::cell::RefCell;
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, Window, WindowOptions, ScaleMode, Scale};
 use crate::cpu::CPU;
 use crate::mmu::MMU;
 use crate::ppu::{PPU, SCREEN_W, SCREEN_H};
 use crate::cartridge::Cartridge;
 use crate::timer::Timer;
+use crate::joypad::*;
 use crate::interrupts::IntReq;
+
+const BUTTONS: [(Key, Button); 8] = [
+    (Key::Enter, Button::Start),
+    (Key::RightShift, Button::Select),
+    (Key::S, Button::A),
+    (Key::A, Button::B),
+    (Key::Down, Button::Down),
+    (Key::Up, Button::Up),
+    (Key::Left, Button::Left),
+    (Key::Right, Button::Right),
+];
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/tetris_jue1.1.gb";
+    let path = "ROMS/Pokemon Red (UE) [S][!].gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -76,18 +89,25 @@ fn main() {
 
     let mut buffer: [u32; SCREEN_W * SCREEN_H] = [0; SCREEN_H * SCREEN_W];
     let mut window = Window::new(
-        title, //"Press ESC to exit",
+        title,
         SCREEN_W,
         SCREEN_H,
-        WindowOptions::default()
+        WindowOptions {
+            scale: Scale::X2,
+            ..WindowOptions::default()
+        },
     ).unwrap_or_else(|e| { panic!("{}", e) });
 
     let intr = Rc::new(RefCell::new(IntReq::new()));
     let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
-    mmu.read_boot(&boot);
     let mut cpu = CPU::new(timer.clone());
     let mut ppu = PPU::new(intr.clone());
+    let mut joypad = Joypad::new(intr.clone());
+
+    mmu.read_boot(&boot);
+
+    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         cpu.step(&mut mmu);
@@ -105,5 +125,45 @@ fn main() {
             window.update_with_buffer(&buffer, SCREEN_W, SCREEN_H).unwrap();
             ppu.update_screen = false;
         }
+
+        for (k,b) in &BUTTONS {
+            if window.is_key_down(*k) {
+                joypad.button_down(&mut mmu, *b);
+            } else {
+                joypad.button_up(&mut mmu, *b);
+            }
+        }
+
+//        window.get_keys().map(|keys| {
+//            for k in keys {
+//                match k {
+//                    Key::Q => joypad.button_down(&mut mmu, Button::Start),
+//                    Key::W => joypad.button_down(&mut mmu, Button::Select),
+//                    Key::A => joypad.button_down(&mut mmu, Button::A),
+//                    Key::S => joypad.button_down(&mut mmu, Button::B),
+//                    Key::Down => joypad.button_down(&mut mmu, Button::Down),
+//                    Key::Up => joypad.button_down(&mut mmu, Button::Up),
+//                    Key::Left => joypad.button_down(&mut mmu, Button::Left),
+//                    Key::Right => joypad.button_down(&mut mmu, Button::Right),
+//                    _ => ()
+//                }
+//            }
+//        });
+//
+//        window.get_keys_released().map(|keys| {
+//            for k in keys {
+//                match k {
+//                    Key::Q => joypad.button_up(&mut mmu, Button::Start),
+//                    Key::W => joypad.button_up(&mut mmu, Button::Select),
+//                    Key::A => joypad.button_up(&mut mmu, Button::A),
+//                    Key::S => joypad.button_up(&mut mmu, Button::B),
+//                    Key::Down => joypad.button_up(&mut mmu, Button::Down),
+//                    Key::Up => joypad.button_up(&mut mmu, Button::Up),
+//                    Key::Left => joypad.button_up(&mut mmu, Button::Left),
+//                    Key::Right => joypad.button_up(&mut mmu, Button::Right),
+//                    _ => ()
+//                }
+//            }
+//        });
     }
 }

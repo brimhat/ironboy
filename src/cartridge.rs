@@ -36,10 +36,85 @@ impl Mbc1 {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct Mbc2 {
+    pub ram_enabled: bool,
+    pub bank: u8,
+}
+
+impl Mbc2 {
+    pub fn setup() -> Mbc2 {
+        Mbc2 {
+            ram_enabled: false,
+            bank: 0b0001,
+        }
+    }
+
+    pub fn get_rom_offsets(&self) -> (u32, u32) {
+        (0, ROM_BANK_SIZE * self.bank as u32)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Mbc3 {
+    pub ram_enabled: bool,
+    pub romb: u8,
+    pub ramb: u8,
+}
+
+impl Mbc3 {
+    pub fn setup() -> Mbc3 {
+        Mbc3 {
+            ram_enabled: false,
+            romb: 0b0000_0001,
+            ramb: 0b0000_0000,
+        }
+    }
+
+    pub fn get_rom_offsets(&self) -> (u32, u32) {
+        (0, ROM_BANK_SIZE * self.romb as u32)
+    }
+
+    pub fn get_ram_offset(&self) -> u32 {
+        RAM_BANK_SIZE * self.ramb as u32
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Mbc5 {
+    pub ram_enabled: bool,
+    pub bank0: u8,
+    pub bank1: u8,
+    pub ramb: u8,
+}
+
+impl Mbc5 {
+    pub fn setup() -> Mbc5 {
+        Mbc5 {
+            ram_enabled: false,
+            bank0: 0,
+            bank1: 0,
+            ramb: 0,
+        }
+    }
+
+    pub fn get_rom_offsets(&self) -> (u32, u32) {
+        let bank = ((self.bank1 as u32) << 8) | (self.bank0 as u32);
+        (0, ROM_BANK_SIZE * bank)
+    }
+
+    pub fn get_ram_offset(&self) -> u32 {
+        RAM_BANK_SIZE * self.ramb as u32
+    }
+}
+
 #[derive(Debug)]
 pub enum Mbc {
     NoMBC,
     MBC1 { mbc: Mbc1 },
+    MBC2 { mbc: Mbc2 },
+    MBC3 { mbc: Mbc3 },
+    MBC5 { mbc: Mbc5 },
 }
 
 #[derive(Debug)]
@@ -84,7 +159,7 @@ impl Cartridge {
             _ => return Err(CartridgeError::UnsupportedROMSize)
         } as usize;
 
-        let ram_size = match data[0x149] {
+        let mut ram_size = match data[0x149] {
             0x0 => 0,
             0x1 => 2 * KILOBYTE,
             0x2 => 8 * KILOBYTE,
@@ -97,6 +172,12 @@ impl Cartridge {
         let mbc = match data[0x147] {
             0x00 => Mbc::NoMBC,
             0x01..=0x03 => Mbc::MBC1 { mbc: Mbc1::setup() },
+            0x05..=0x06 => {
+                ram_size = 512;
+                Mbc::MBC2 { mbc: Mbc2::setup() }
+            },
+            0x11..=0x13 => Mbc::MBC3 { mbc: Mbc3::setup() },
+            0x19..=0x1E => Mbc::MBC5 { mbc: Mbc5::setup() },
             _ => return Err(CartridgeError::UnsupportedMBC)
         };
 
@@ -104,6 +185,22 @@ impl Cartridge {
             Err(e) => panic!("Error loading cartridge title: {}", e),
             Ok(s) => s,
         };
+
+        if rom_size >= MEGABYTE as usize {
+            println!(
+                "ROM SIZE: {}mb\nRAM SIZE: {}kb\nMBC: {:?}",
+                rom_size / MEGABYTE as usize,
+                ram_size / KILOBYTE as usize,
+                mbc
+            );
+        } else {
+            println!(
+                "ROM SIZE: {}kb\nRAM SIZE: {}kb\nMBC: {:?}",
+                rom_size / KILOBYTE as usize,
+                ram_size / KILOBYTE as usize,
+                mbc
+            );
+        }
 
         let rom = Cartridge::load_rom(data, rom_size);
 
@@ -168,11 +265,59 @@ impl Cartridge {
                     },
                     _ => panic!("Virtual address overflow: {:#X}", address)
                 }
+            },
+            Mbc::MBC2 { ref mut mbc } => {
+                match address {
+                    0x0000..=0x3FFF => {
+                        if (address & 0x100) == 0 {
+                            mbc.ram_enabled = (value & 0b1111) == 0b1010
+                        } else {
+                            let v = value & 0b1111;
+                            mbc.bank = if v == 0 { 1 } else { v };
+                            self.rom_offsets = mbc.get_rom_offsets();
+                        }
+                    },
+                    _ => ()
+                }
+            },
+            Mbc::MBC3 { ref mut mbc } => {
+                match address {
+                    0x0000..=0x1FFF => mbc.ram_enabled = (value & 0b1111) == 0b1010,
+                    0x2000..=0x3FFF => {
+                        let v = value & 0x7F;
+                        mbc.romb = if v == 0 { 1 } else { v };
+                        self.rom_offsets = mbc.get_rom_offsets();
+                    },
+                    0x4000..=0x5FFF => {
+                        mbc.ramb = value & 0b11;
+                        self.ram_offset = mbc.get_ram_offset();
+                    },
+                    _ => ()
+                }
+            },
+            Mbc::MBC5 { ref mut mbc } => {
+                match address {
+                    0x0000..=0x1FFF => mbc.ram_enabled = value == 0b0000_1010,
+                    0x2000..=0x2FFF => {
+                        mbc.bank0 = value;
+                        self.rom_offsets = mbc.get_rom_offsets();
+                    },
+                    0x3000..=0x3FFF => {
+                        mbc.bank1 = value & 0b1;
+                        self.rom_offsets = mbc.get_rom_offsets();
+                    },
+                    0x4000..=0x5FFF => {
+                        mbc.ramb = value & 0x0F;
+                        self.ram_offset = mbc.get_ram_offset();
+                    },
+                    _ => ()
+                }
             }
         }
     }
 
     pub fn read_ram(&self, address: u16) -> u8 {
+        let undefined = 0xFF;
         let physical_address = (self.ram_offset | (address as u32 & 0x1FFF)) as usize;
         match self.mbc {
             Mbc::NoMBC => 0xFD, // NULL opcode
@@ -180,7 +325,31 @@ impl Cartridge {
                 if mbc.ram_enabled {
                     self.ram[physical_address & (self.ram.len() - 1)]
                 } else {
-                    0xFD
+                    undefined
+                }
+            },
+            Mbc::MBC2 { ref mbc } => {
+                if mbc.ram_enabled {
+                    self.ram[physical_address & 0x1FF] & 0x0F
+                } else {
+                    undefined
+                }
+            },
+            Mbc::MBC3 { ref mbc } => {
+                if mbc.ram_enabled {
+                    match mbc.ramb {
+                        0x00..=0x03 => self.ram[physical_address & (self.ram.len() - 1)],
+                        _ => undefined
+                    }
+                } else {
+                    undefined
+                }
+            },
+            Mbc::MBC5 { ref mbc } => {
+                if mbc.ram_enabled {
+                    self.ram[physical_address & (self.ram.len() - 1)]
+                } else {
+                    undefined
                 }
             }
         }
@@ -192,7 +361,28 @@ impl Cartridge {
             Mbc::NoMBC => {},
             Mbc::MBC1 { ref mbc } => {
                 if mbc.ram_enabled {
-                    self.ram[physical_address] = value;
+                    let len = self.ram.len() - 1;
+                    self.ram[physical_address & len] = value;
+                }
+            },
+            Mbc::MBC2 { ref mbc } => {
+                if mbc.ram_enabled {
+                    self.ram[physical_address & 0x1FF] = value & 0x0F;
+                }
+            },
+            Mbc::MBC3 { ref mbc } => {
+                if mbc.ram_enabled {
+                    let len = self.ram.len() - 1;
+                    match mbc.ramb {
+                        0x00..=0x03 => self.ram[physical_address & len] = value,
+                        _ => (),
+                    }
+                }
+            }
+            Mbc::MBC5 { ref mbc } => {
+                if mbc.ram_enabled {
+                    let len = self.ram.len() - 1;
+                    self.ram[physical_address & len] = value;
                 }
             }
         }
