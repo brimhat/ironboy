@@ -1201,16 +1201,15 @@ impl CPU {
         };
 
         self.clocks_elapsed = clocks;
+        self.timer.borrow_mut().tick_n(clocks);
 
         if self.interrupt_exists(mmu) {
             // effect of EI is delayed one instruction
             if self.last_instr == Instruction::EI {
-                self.timer.borrow_mut().tick_n(clocks);
                 self.execute(mmu, instr);
             }
             self.handle_interrupt(mmu);
         } else if !self.halt {
-            self.timer.borrow_mut().tick_n(clocks);
             self.execute(mmu, instr);
         }
 

@@ -41,7 +41,7 @@ const BUTTONS: [(Key, Button); 8] = [
 
 fn main() {
     let mut test = Vec::<u8>::new();
-    let path = "ROMS/Pokemon Red (UE) [S][!].gb";
+    let path = "ROMS/Super Mario Land (World).gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -103,7 +103,6 @@ fn main() {
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
     let mut cpu = CPU::new(timer.clone());
     let mut ppu = PPU::new(intr.clone());
-    let mut joypad = Joypad::new(intr.clone());
 
     mmu.read_boot(&boot);
 
@@ -128,42 +127,10 @@ fn main() {
 
         for (k,b) in &BUTTONS {
             if window.is_key_down(*k) {
-                joypad.button_down(&mut mmu, *b);
+                mmu.joypad.button_down(*b);
             } else {
-                joypad.button_up(&mut mmu, *b);
+                mmu.joypad.button_up(*b);
             }
         }
-
-//        window.get_keys().map(|keys| {
-//            for k in keys {
-//                match k {
-//                    Key::Q => joypad.button_down(&mut mmu, Button::Start),
-//                    Key::W => joypad.button_down(&mut mmu, Button::Select),
-//                    Key::A => joypad.button_down(&mut mmu, Button::A),
-//                    Key::S => joypad.button_down(&mut mmu, Button::B),
-//                    Key::Down => joypad.button_down(&mut mmu, Button::Down),
-//                    Key::Up => joypad.button_down(&mut mmu, Button::Up),
-//                    Key::Left => joypad.button_down(&mut mmu, Button::Left),
-//                    Key::Right => joypad.button_down(&mut mmu, Button::Right),
-//                    _ => ()
-//                }
-//            }
-//        });
-//
-//        window.get_keys_released().map(|keys| {
-//            for k in keys {
-//                match k {
-//                    Key::Q => joypad.button_up(&mut mmu, Button::Start),
-//                    Key::W => joypad.button_up(&mut mmu, Button::Select),
-//                    Key::A => joypad.button_up(&mut mmu, Button::A),
-//                    Key::S => joypad.button_up(&mut mmu, Button::B),
-//                    Key::Down => joypad.button_up(&mut mmu, Button::Down),
-//                    Key::Up => joypad.button_up(&mut mmu, Button::Up),
-//                    Key::Left => joypad.button_up(&mut mmu, Button::Left),
-//                    Key::Right => joypad.button_up(&mut mmu, Button::Right),
-//                    _ => ()
-//                }
-//            }
-//        });
     }
 }

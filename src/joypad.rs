@@ -10,47 +10,59 @@ pub enum Button {
     Select  = 0b0000_0100,
     B       = 0b0000_0010,
     A       = 0b0000_0001,
-    Down    = 0b1000_0000,
-    Up      = 0b0100_0000,
-    Left    = 0b0010_0000,
-    Right   = 0b0001_0000,
+    Down    = 0b1111_1000,
+    Up      = 0b1111_0100,
+    Left    = 0b1111_0010,
+    Right   = 0b1111_0001,
 }
 
 pub struct Joypad {
     intr: Rc<RefCell<IntReq>>,
+    dpad: u8,
+    bpad: u8,
+    select: u8,
 }
 
 impl Joypad {
     pub fn new(intr: Rc<RefCell<IntReq>>) -> Joypad {
         Joypad {
             intr,
+            dpad: 0,
+            bpad: 0,
+            select: 0,
         }
     }
 
-    pub fn button_down(&mut self, mmu: &mut MMU, button: Button) {
-        self.intr.borrow_mut().set_flag(IntFlag::Joypad);
-        let select = mmu.rb(0xFF00) & 0b0011_0000;
-        let value = if select == 0b0010_0000 {
-            select | !(button as u8) >> 4
-        } else {
-            select | !(button as u8) & 0x0F
-        };
-
-        mmu.wb(0xFF00, value);
-//        if value != select {
-//            println!("{:?} {:#b}", button, value);
-//        }
+    pub fn set_select(&mut self, value: u8) {
+        self.select = value;
     }
 
-    pub fn button_up(&mut self, mmu: &mut MMU, button: Button) {
-        let down = mmu.rb(0xFF00);
-        let select = down & 0b0011_0000;
-        let nibble = if select == 0b0010_0000 {
-            (button as u8) >> 4
+    pub fn state(&self) -> u8 {
+        let state = if (self.select & 0b0001_0000) == 0 {
+            self.select | self.dpad
+        } else if (self.select & 0b0010_0000) == 0 {
+            self.select | self.bpad
         } else {
-            (button as u8) & 0x0F
+            self.select
         };
 
-        mmu.wb(0xFF00, down | nibble as u8);
+        0b1100_0000 | state
+    }
+
+    pub fn button_down(&mut self, button: Button) {
+        self.intr.borrow_mut().set_flag(IntFlag::Joypad);
+        if button as u8 > 0x0F {
+            self.dpad &= !(button as u8) & 0x0F;
+        } else {
+            self.bpad &= !(button as u8) & 0x0F;
+        }
+    }
+
+    pub fn button_up(&mut self, button: Button) {
+        if button as u8 > 0x0F {
+            self.dpad |= button as u8 & 0x0F;
+        } else {
+            self.bpad |= button as u8;
+        }
     }
 }

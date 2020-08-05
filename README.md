@@ -6,15 +6,6 @@ ironboy is a Game Boy emulator written in Rust.
  * This project is still a WIP
  * ironboy requires a boot rom
 
-**What I am currently working on:**
-
-A more machine-accurate implementation of the timer.
-Currently the PPU isn't synced properly and I
-am getting a flickering image (though the boot rom works fine).
-I suspect that this is due to my shoddy/hacky timer implementation:
-
-![flickering image](data/flickering_image.gif)
-
 ## Things I may do in the future:
  * Implement the APU
  * Serialization

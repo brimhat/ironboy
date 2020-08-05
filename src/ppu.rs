@@ -34,12 +34,71 @@ pub enum Mode {
     VBlank          = 0b0000_0001,
 }
 
-pub struct PPU {
+impl From<u8> for Mode {
+    fn from(mode: u8) -> Mode {
+        match mode {
+            0 => Mode::HBlank,
+            1 => Mode::VBlank,
+            2 => Mode::OAMSearch,
+            3 => Mode::PixelTransfer,
+            _ => unreachable!()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Stat {
+    pub enable_coincidence: bool,
+    pub enable_oam_seach: bool,
+    pub enable_vblank: bool,
+    pub enable_hblank: bool,
+    pub coincidence: bool,
     pub mode: Mode,
+}
+
+impl Stat {
+    pub fn new() -> Stat {
+        Stat {
+            enable_coincidence: false,
+            enable_oam_seach: false,
+            enable_vblank: false,
+            enable_hblank: false,
+            coincidence: false,
+            mode: Mode::OAMSearch,
+        }
+    }
+}
+
+impl From<u8> for Stat {
+    fn from(stat: u8) -> Stat {
+        Stat {
+            enable_coincidence: (stat & 0b0100_0000) != 0,
+            enable_oam_seach: (stat & 0b0010_0000) != 0,
+            enable_vblank: (stat & 0b0001_0000) != 0,
+            enable_hblank: (stat & 0b0000_1000) != 0,
+            coincidence: (stat & 0b100) != 0,
+            mode: Mode::from(stat & 0b11),
+        }
+    }
+}
+
+impl From<Stat> for u8 {
+    fn from(stat: Stat) -> u8 {
+        ((stat.enable_coincidence as u8) << 6)
+        | ((stat.enable_oam_seach as u8) << 5)
+        | ((stat.enable_vblank as u8) << 4)
+        | ((stat.enable_hblank as u8) << 3)
+        | ((stat.coincidence as u8) << 2)
+        | (stat.mode as u8)
+    }
+}
+
+pub struct PPU {
     pub mode_clock: u16,
     intr: Rc<RefCell<IntReq>>,
     pub data: [[u32; SCREEN_W]; SCREEN_H],
     pub update_screen: bool,
+    stat: Stat,
     bg_palette: [u32; 4],
     obp0: [u32; 4],
     obp1: [u32; 4],
@@ -48,11 +107,11 @@ pub struct PPU {
 impl PPU {
     pub fn new(intr: Rc<RefCell<IntReq>>) -> PPU {
         PPU {
-            mode: Mode::OAMSearch,
             mode_clock: 0,
             intr,
             data: [[0; SCREEN_W]; SCREEN_H],
             update_screen: false,
+            stat: Stat::new(),
             bg_palette: [0; 4],
             obp0: [0; 4],
             obp1: [0; 4],
@@ -65,47 +124,6 @@ impl PPU {
 
     pub fn inc_ly(&self, mmu: &mut MMU) {
         mmu.wb(0xFF44, (self.get_ly(mmu) + 1) % 154);
-    }
-
-    pub fn set_stat(&self, mmu: &mut MMU, mode: Mode) {
-        let stat = mmu.rb(0xFF41);
-        let clean_stat = stat & 0b1111_1100;
-
-        let mode_bits = match (stat & 0x3F) >> 3 {
-            0b111 => mode as u8,
-            0b110 => if mode == Mode::HBlank { 0 } else { mode as u8 },
-            0b101 => if mode == Mode::VBlank { 0 } else { mode as u8 },
-            0b011 => if mode == Mode::OAMSearch { 0 } else { mode as u8 },
-            0b100 => if mode != Mode::OAMSearch { 0 } else { mode as u8 },
-            0b001 => if mode != Mode::HBlank { 0 } else { mode as u8 },
-            0b010 => if mode != Mode::VBlank { 0 } else { mode as u8 },
-            0b000 => if mode != Mode::PixelTransfer { 0 } else { mode as u8 },
-            _ => unreachable!()
-        };
-
-        let new_stat = clean_stat | mode_bits;
-        if new_stat != clean_stat {
-            mmu.wb(0xFF41, new_stat);
-            self.intr.borrow_mut().set_flag(IntFlag::Stat);
-        }
-    }
-
-    pub fn check_coincidence(&self, mmu: &mut MMU) {
-        let lyc = mmu.rb(0xFF45);
-        let stat = mmu.rb(0xFF41);
-        let clean_stat = stat & 0b1111_1011;
-
-        let coincidence: u8 = match (stat & 0x7F) >> 6 {
-            0b1 => if self.get_ly(mmu) == lyc { 0b0100 } else { 0 },
-            0b0 => 0,
-            _ => unreachable!(),
-        };
-
-        let new_stat = clean_stat | coincidence;
-        if new_stat != clean_stat {
-            mmu.wb(0xFF41, new_stat);
-            self.intr.borrow_mut().set_flag(IntFlag::Stat);
-        }
     }
 
     pub fn tick_n(&mut self, mmu: &mut MMU, m_clocks: u8) {
@@ -126,45 +144,59 @@ impl PPU {
         }
 
         let stat = mmu.rb(0xFF41);
+        self.stat = Stat::from(stat);
+
         self.mode_clock += 4;
         if self.mode_clock >= 456 {
-            self.inc_ly(mmu);
-            self.check_coincidence(mmu);
             self.mode_clock %= 456;
+            self.inc_ly(mmu);
+            if self.stat.enable_coincidence {
+                let lyc = mmu.rb(0xFF45);
+                if self.get_ly(mmu) == lyc {
+                    self.stat.coincidence = true;
+                    self.intr.borrow_mut().set_flag(IntFlag::Stat);
+                } else {
+                    self.stat.coincidence = false;
+                }
+            }
         }
 
         if self.get_ly(mmu) >= 144 {
-            if self.mode != Mode::VBlank {
+            if self.stat.mode != Mode::VBlank {
                 self.update_screen = true;
-                self.mode = Mode::VBlank;
+                self.stat.mode = Mode::VBlank;
                 self.intr.borrow_mut().set_flag(IntFlag::VBlank);
-                if (stat & Mode::VBlank as u8) == 0 {
-                    self.set_stat(mmu, Mode::VBlank);
+                if self.stat.enable_vblank {
+                    self.intr.borrow_mut().set_flag(IntFlag::Stat);
                 }
             }
         } else if self.mode_clock <= OAM_SEARCH_END {
-            if self.mode != Mode::OAMSearch {
-                self.mode = Mode::OAMSearch;
-                if (stat & Mode::OAMSearch as u8) == 0 {
-                    self.set_stat(mmu, Mode::OAMSearch);
+            if self.stat.mode != Mode::OAMSearch {
+                self.stat.mode = Mode::OAMSearch;
+                if self.stat.enable_oam_seach {
+                    self.intr.borrow_mut().set_flag(IntFlag::Stat);
                 }
             }
         } else if self.mode_clock <= PIXEL_TRANSFER_END {
-            if self.mode != Mode::PixelTransfer {
-                self.mode = Mode::PixelTransfer;
+            if self.stat.mode != Mode::PixelTransfer {
+                self.stat.mode = Mode::PixelTransfer;
+
                 self.draw_bg(mmu);
                 if lcdc & 0b10 != 0 {
                     self.draw_obj(mmu);
                 }
             }
         } else {
-            if self.mode != Mode::HBlank {
-                self.mode = Mode::HBlank;
-                if (stat & Mode::HBlank as u8) == 0 {
-                    self.set_stat(mmu, Mode::HBlank);
+            if self.stat.mode != Mode::HBlank {
+                self.stat.mode = Mode::HBlank;
+                if self.stat.enable_hblank {
+                    self.intr.borrow_mut().set_flag(IntFlag::Stat);
                 }
             }
         }
+
+        let new_stat = self.stat.clone();
+        mmu.wb(0xFF41, u8::from(new_stat))
     }
 
     pub fn draw_bg(&mut self, mmu: &mut MMU) {
@@ -226,10 +258,6 @@ impl PPU {
             } else {
                 tile_map_index as u16
             };
-
-            if map_y >= 7 && map_start == TILE_MAP1 {
-                println!("{:#X} {:#X} {:#X}", map_x, map_y, tile_map_offset)
-            }
 
             let tile_idx = tile_map_offset.wrapping_mul(16);
             let tile_row = (y as u16 % 8) * 2;
