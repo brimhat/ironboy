@@ -16,10 +16,9 @@ mod test {
 use std::ffi::CStr;
 use std::io::prelude::*;
 use std::fs::File;
-use std::result::Result;
 use std::rc::Rc;
 use std::cell::RefCell;
-use minifb::{Key, Window, WindowOptions, ScaleMode, Scale};
+use minifb::{Key, Window, WindowOptions, Scale};
 use crate::cpu::CPU;
 use crate::mmu::MMU;
 use crate::ppu::{PPU, SCREEN_W, SCREEN_H};
@@ -40,23 +39,23 @@ const BUTTONS: [(Key, Button); 8] = [
 ];
 
 fn main() {
-    let mut test = Vec::<u8>::new();
-    let path = "ROMS/Super Mario Land (World).gb";
+    let mut rom = Vec::<u8>::new();
+    let path = "roms/games/Dr. Mario (World).gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
     };
-    match file.read_to_end(&mut test) {
+    match file.read_to_end(&mut rom) {
         Err(e) => panic!("{}", e),
         Ok(_) => (),
     }
-    let mut cartridge = match Cartridge::new(test) {
+    let mut cartridge = match Cartridge::new(rom) {
         Err(e) => panic!("Error loading cartridge: {:?}", e),
         Ok(c) => c,
     };
 
     let mut boot = Vec::<u8>::new();
-    let boot_path = "ROMS/DMG_ROM.bin";
+    let boot_path = "roms/DMG_ROM.bin";
     file = match File::open(boot_path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -68,7 +67,7 @@ fn main() {
 
     let title = {
         let mut end_of_title: usize = 1;
-        let mut cart_title = cartridge.title.as_bytes();
+        let cart_title = cartridge.title.as_bytes();
         while cart_title[end_of_title - 1] != 0 {
             end_of_title += 1;
             if end_of_title == cartridge.title.len() {

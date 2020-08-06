@@ -1,5 +1,4 @@
 use crate::mmu::MMU;
-use crate::ppu::PPU;
 use crate::timer::Timer;
 use crate::registers::{Registers, Flag};
 use std::rc::Rc;
@@ -550,33 +549,35 @@ impl CPU {
                 self.reg.set_flag(Flag::H, true);
             },
             Instruction::RES(i , t) => {
+                let mask: u8 = !(1 << i);
                 match t {
-                    Target::A  => self.reg.a &= !(1 << i),
-                    Target::B  => self.reg.b &= !(1 << i),
-                    Target::C  => self.reg.c &= !(1 << i),
-                    Target::D  => self.reg.d &= !(1 << i),
-                    Target::E  => self.reg.e &= !(1 << i),
-                    Target::H  => self.reg.h &= !(1 << i),
-                    Target::L  => self.reg.l &= !(1 << i),
+                    Target::A  => self.reg.a &= mask,
+                    Target::B  => self.reg.b &= mask,
+                    Target::C  => self.reg.c &= mask,
+                    Target::D  => self.reg.d &= mask,
+                    Target::E  => self.reg.e &= mask,
+                    Target::H  => self.reg.h &= mask,
+                    Target::L  => self.reg.l &= mask,
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
-                        mmu.wb(self.reg.hl(), at_hl & !(1 << i));
+                        mmu.wb(self.reg.hl(), at_hl & mask);
                     },
                     _ => unreachable!()
                 }
             },
             Instruction::SET(i, t) => {
+                let mask: u8 = 1 << i;
                 match t {
-                    Target::A  => self.reg.a |= (1 << i),
-                    Target::B  => self.reg.b |= (1 << i),
-                    Target::C  => self.reg.c |= (1 << i),
-                    Target::D  => self.reg.d |= (1 << i),
-                    Target::E  => self.reg.e |= (1 << i),
-                    Target::H  => self.reg.h |= (1 << i),
-                    Target::L  => self.reg.l |= (1 << i),
+                    Target::A  => self.reg.a |= mask,
+                    Target::B  => self.reg.b |= mask,
+                    Target::C  => self.reg.c |= mask,
+                    Target::D  => self.reg.d |= mask,
+                    Target::E  => self.reg.e |= mask,
+                    Target::H  => self.reg.h |= mask,
+                    Target::L  => self.reg.l |= mask,
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
-                        mmu.wb(self.reg.hl(), at_hl | (1 << i));
+                        mmu.wb(self.reg.hl(), at_hl | mask);
                     },
                     _ => unreachable!()
                 }
@@ -933,7 +934,7 @@ impl CPU {
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x80) != 0;
-                        let new_hl = (at_hl << 1);
+                        let new_hl = at_hl << 1;
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     },
@@ -1037,7 +1038,7 @@ impl CPU {
                     Target::HL => {
                         let at_hl = mmu.rb(self.reg.hl());
                         let c = (at_hl & 0x01) != 0;
-                        let new_hl = (at_hl >> 1);
+                        let new_hl = at_hl >> 1;
                         mmu.wb(self.reg.hl(), new_hl);
                         (new_hl, c)
                     },

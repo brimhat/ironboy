@@ -38,9 +38,6 @@ impl<'a> MMU<'a> {
     }
 
     pub fn rb(&self, address: u16) -> u8 {
-        if address == 0xFF00 {
-            println!("JOYPAD STATE: {:#b}", self.joypad.state());
-        }
         if address < 0x100 {
             return if self.rb(0xFF50) == 0 {
                 self.boot[address as usize]
@@ -64,9 +61,6 @@ impl<'a> MMU<'a> {
     }
 
     pub fn wb(&mut self, address: u16, value: u8) {
-        if address == 0xFF00 {
-            println!("JOYPAD SELECT: {:#b}", value);
-        }
         if address == 0xFF46 { // DMA Transfer
             assert!(value <= 0xF1);
             self.mem[0xFF46] = value;
@@ -75,6 +69,7 @@ impl<'a> MMU<'a> {
                 let byte = self.rb(hi | lo);
                 self.wb(0xFE00 | lo, byte);
             }
+            return;
         }
 
         if address == 0xFF04 {

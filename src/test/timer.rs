@@ -1,15 +1,16 @@
+#![allow(dead_code, unused_imports)]
+
 use crate::timer::Timer;
 use crate::mmu::MMU;
 use crate::cartridge::Cartridge;
 use crate::interrupts::IntReq;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::borrow::Borrow;
 
 const ROM: [u8; 32768] = [0; 32768];
 
-pub fn cartridge() -> Cartridge {
-    let mut cartridge = match Cartridge::new(ROM.to_vec()) {
+fn cartridge() -> Cartridge {
+    let cartridge = match Cartridge::new(ROM.to_vec()) {
         Err(e) => panic!("Error loading cartridge: {:#?}", e),
         Ok(c) => c,
     };
@@ -21,7 +22,7 @@ fn div() {
     let intr = Rc::new(RefCell::new(IntReq::new()));
     let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge();
-    let mut mmu = MMU::new(&mut cartridge, timer.clone());
+    let mmu = MMU::new(&mut cartridge, timer.clone());
 
     for _ in 0..63 {
         timer.borrow_mut().tick();

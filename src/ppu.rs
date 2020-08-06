@@ -98,7 +98,7 @@ pub struct PPU {
     intr: Rc<RefCell<IntReq>>,
     pub data: [[u32; SCREEN_W]; SCREEN_H],
     pub update_screen: bool,
-    stat: Stat,
+    pub stat: Stat,
     bg_palette: [u32; 4],
     obp0: [u32; 4],
     obp1: [u32; 4],

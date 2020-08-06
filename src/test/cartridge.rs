@@ -1,11 +1,13 @@
-use crate::cartridge::{Cartridge, KILOBYTE, MEGABYTE, ROM_BANK_SIZE, RAM_BANK_SIZE};
+#![allow(dead_code, unused_imports)]
+
+use crate::cartridge::{Cartridge, KILOBYTE, MEGABYTE, ROM_BANK_SIZE};
 use crate::mmu::MMU;
 use crate::interrupts::IntReq;
 use crate::timer::Timer;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn cartridge_0b() -> Cartridge {
+fn cartridge_0b() -> Cartridge {
     let mut rom: Vec<u8> = vec![0; 32 * KILOBYTE as usize];
     rom[0x147] = 0;
     rom[0x148] = 0;
@@ -21,7 +23,7 @@ pub fn cartridge_0b() -> Cartridge {
     }
 }
 
-pub fn cartridge_4b() -> Cartridge {
+fn cartridge_4b() -> Cartridge {
     let mut rom: Vec<u8> = vec![0; 64 * KILOBYTE as usize];
     rom[0x147] = 1;
     rom[0x148] = 1;
@@ -33,7 +35,7 @@ pub fn cartridge_4b() -> Cartridge {
     }
 }
 
-pub fn cartridge_128b() -> Cartridge {
+fn cartridge_128b() -> Cartridge {
     let mut rom: Vec<u8> = vec![0; 2 * MEGABYTE as usize];
     rom[0x147] = 1;
     rom[0x148] = 6;
@@ -46,7 +48,7 @@ pub fn cartridge_128b() -> Cartridge {
     }
 }
 
-pub fn cartridge_mbc2() -> Cartridge {
+fn cartridge_mbc2() -> Cartridge {
     let mut rom: Vec<u8> = vec![0; 64 * KILOBYTE as usize];
     rom[0x147] = 5;
     rom[0x148] = 1;
@@ -60,10 +62,10 @@ pub fn cartridge_mbc2() -> Cartridge {
 
 #[test]
 fn no_mbc_read() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_0b();
-    let mut mmu = MMU::new(&mut cartridge, timer.clone());
+    let mmu = MMU::new(&mut cartridge, timer.clone());
     let lower_1 = mmu.rb(0x27EB);
     let expected_lower_1 = 0x20;
     assert_eq!(lower_1, expected_lower_1);
@@ -80,8 +82,8 @@ fn no_mbc_read() {
 
 #[test]
 fn mbc1_bank_mode_on() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_4b();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
     mmu.wb(0x3FFF, 0b0001_0010); // Bank 1 register
@@ -94,8 +96,8 @@ fn mbc1_bank_mode_on() {
 
 #[test]
 fn mbc1_bank_mode_off() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_4b();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
     mmu.wb(0x3FFF, 0b0001_0010); // Bank 1 register
@@ -108,8 +110,8 @@ fn mbc1_bank_mode_off() {
 
 #[test]
 fn mbc1_read_bank() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_128b();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
     mmu.wb(0x3FFF, 0b0000_0100); // Bank 1 register
@@ -126,8 +128,8 @@ fn mbc1_read_bank() {
 
 #[test]
 fn mbc2_read_ram() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cartridge = cartridge_mbc2();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
     mmu.wb(0x3EFF, 0b1010); // should enable ram
@@ -138,7 +140,7 @@ fn mbc2_read_ram() {
     assert_eq!(expected_read_value, read_value);
 
     mmu.wb(0x3000, 0); // should disable ram
-    let expected_undefined = 0xFD;
+    let expected_undefined = 0xFF;
     let read_value2 = mmu.rb(0xA400);
     assert_eq!(expected_undefined, read_value2);
 }

@@ -1,7 +1,9 @@
+#![allow(dead_code, unused_imports)]
+
 use crate::mmu::MMU;
 use crate::cartridge::Cartridge;
-use crate::cpu::{ CPU, Instruction, JumpFlag, Target };
-use crate::registers::{ Registers, Flag };
+use crate::cpu::{ CPU, Instruction, Target };
+use crate::registers::{ Flag };
 use crate::interrupts::IntReq;
 use crate::timer::Timer;
 use std::rc::Rc;
@@ -9,8 +11,8 @@ use std::cell::RefCell;
 
 const ROM: [u8; 32768] = [0; 32768];
 
-pub fn cartridge() -> Cartridge {
-    let mut cartridge = match Cartridge::new(ROM.to_vec()) {
+fn cartridge() -> Cartridge {
+    let cartridge = match Cartridge::new(ROM.to_vec()) {
         Err(e) => panic!("Error loading cartridge: {:#?}", e),
         Ok(c) => c,
     };
@@ -19,8 +21,8 @@ pub fn cartridge() -> Cartridge {
 
 #[test]
 fn ld() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -71,8 +73,8 @@ fn ld() {
 
 #[test]
 fn rla() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -85,8 +87,8 @@ fn rla() {
 
 #[test]
 fn rlca() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -98,8 +100,8 @@ fn rlca() {
 
 #[test]
 fn rrca() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -111,8 +113,8 @@ fn rrca() {
 
 #[test]
 fn rra() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -125,8 +127,8 @@ fn rra() {
 
 #[test]
 fn rl() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -145,8 +147,8 @@ fn rl() {
 
 #[test]
 fn rlc() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -165,8 +167,8 @@ fn rlc() {
 
 #[test]
 fn rr() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -185,8 +187,8 @@ fn rr() {
 
 #[test]
 fn rrc() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -205,8 +207,8 @@ fn rrc() {
 
 #[test]
 fn sla() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -226,8 +228,8 @@ fn sla() {
 
 #[test]
 fn sra() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -247,8 +249,8 @@ fn sra() {
 
 #[test]
 fn srl() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -268,8 +270,8 @@ fn srl() {
 
 #[test]
 fn and() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -297,8 +299,8 @@ fn and() {
 
 #[test]
 fn or() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -319,8 +321,8 @@ fn or() {
 
 #[test]
 fn xor() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -344,8 +346,8 @@ fn xor() {
 
 #[test]
 fn inc() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -363,8 +365,8 @@ fn inc() {
 
 #[test]
 fn dec() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -382,8 +384,8 @@ fn dec() {
 
 #[test]
 fn add() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -401,8 +403,8 @@ fn add() {
 
 #[test]
 fn adc() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -437,8 +439,8 @@ fn adc() {
 
 #[test]
 fn add_hl() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -461,8 +463,8 @@ fn add_hl() {
 
 #[test]
 fn sub() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -496,8 +498,8 @@ fn sub() {
 
 #[test]
 fn sbc() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -532,8 +534,8 @@ fn sbc() {
 
 #[test]
 fn cp() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -565,8 +567,8 @@ fn cp() {
 
 #[test]
 fn swap() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -584,8 +586,8 @@ fn swap() {
 
 #[test]
 fn daa() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -605,8 +607,8 @@ fn daa() {
 
 #[test]
 fn bit() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -621,8 +623,8 @@ fn bit() {
 
 #[test]
 fn res() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -642,8 +644,8 @@ fn res() {
 
 #[test]
 fn set() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -663,8 +665,8 @@ fn set() {
 
 #[test]
 fn cpl() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -677,8 +679,8 @@ fn cpl() {
 
 #[test]
 fn ccf() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -697,8 +699,8 @@ fn ccf() {
 
 #[test]
 fn scf() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -721,8 +723,8 @@ fn scf() {
 
 #[test]
 fn ei() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -749,8 +751,8 @@ fn ei() {
 
 #[test]
 fn jp() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -799,8 +801,8 @@ fn jp() {
 
 #[test]
 fn jr() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -813,8 +815,8 @@ fn jr() {
 
 #[test]
 fn call() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
@@ -831,8 +833,8 @@ fn call() {
 
 #[test]
 fn ret() {
-    let mut intr = Rc::new(RefCell::new(IntReq::new()));
-    let mut timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
+    let intr = Rc::new(RefCell::new(IntReq::new()));
+    let timer = Rc::new(RefCell::new(Timer::new(intr.clone())));
     let mut cpu = CPU::new(timer.clone());
     let mut cartridge = cartridge();
     let mut mmu = MMU::new(&mut cartridge, timer.clone());
