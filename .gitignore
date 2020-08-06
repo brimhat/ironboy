@@ -1,4 +1,6 @@
 /roms/games/
+/roms/tests/mooneye-test-roms/
+/roms/tests/blargg-test-roms/
 /roms/DMG_ROM.bin
 /target
 /target/*
