@@ -4,7 +4,7 @@ pub enum IntFlag {
     VBlank = 0b0000_0001,
     Stat   = 0b0000_0010,
     Timer  = 0b0000_0100,
-    Serial = 0b0000_1000,
+    //Serial = 0b0000_1000,
     Joypad = 0b0001_0000,
 }
 

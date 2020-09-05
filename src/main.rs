@@ -26,6 +26,7 @@ use crate::cartridge::Cartridge;
 use crate::timer::Timer;
 use crate::joypad::*;
 use crate::interrupts::IntReq;
+use std::env;
 
 const BUTTONS: [(Key, Button); 8] = [
     (Key::Enter, Button::Start),
@@ -39,8 +40,14 @@ const BUTTONS: [(Key, Button); 8] = [
 ];
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    let path: &str = args[args.len() - 1].as_ref();
+
+    if &path[path.len()-3..path.len()] != ".gb" {
+        panic!("Invalid file extension in path: {}", path);
+    }
+
     let mut rom = Vec::<u8>::new();
-    let path = "roms/games/Pokemon Red (UE) [S][!].gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,
@@ -76,9 +83,10 @@ fn main() {
                 break;
             }
         }
+
         let title_bytes = &cartridge.title[0..end_of_title];
         match CStr::from_bytes_with_nul(title_bytes.as_ref()) {
-            Err(e) => panic!("{}", e),
+            Err(_) => "Couldn't parse title",
             Ok(cstr) => match cstr.to_str() {
                 Err(e) => panic!("{}", e),
                 Ok(s) => s,

@@ -5,8 +5,6 @@ use crate::joypad::Joypad;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-const MEM_SIZE: usize = 0xFFFF + 1;
-
 pub struct MMU<'a> {
     boot: [u8; 0x100],
     cartridge: &'a mut Cartridge,

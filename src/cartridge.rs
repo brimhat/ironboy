@@ -186,22 +186,6 @@ impl Cartridge {
             Ok(s) => s,
         };
 
-        if rom_size >= MEGABYTE as usize {
-            println!(
-                "ROM SIZE: {}mb\nRAM SIZE: {}kb\nMBC: {:?}",
-                rom_size / MEGABYTE as usize,
-                ram_size / KILOBYTE as usize,
-                mbc
-            );
-        } else {
-            println!(
-                "ROM SIZE: {}kb\nRAM SIZE: {}kb\nMBC: {:?}",
-                rom_size / KILOBYTE as usize,
-                ram_size / KILOBYTE as usize,
-                mbc
-            );
-        }
-
         let rom = Cartridge::load_rom(data, rom_size);
 
         Ok(Cartridge {
