@@ -1195,8 +1195,8 @@ impl CPU {
     }
 
     pub fn step(&mut self, mmu: &mut MMU) {
-        let (instr, clocks) = if self.halt {
-            (Instruction::HALT, 4)
+        let (instr, clocks, prefixed) = if self.halt {
+            (Instruction::HALT, 4, false)
         } else {
             self.fetch_instr(mmu)
         };
@@ -1208,6 +1208,8 @@ impl CPU {
             // effect of EI is delayed one instruction
             if self.last_instr == Instruction::EI {
                 self.execute(mmu, instr);
+            } else if prefixed {
+                self.reg.pc -= 1;
             }
             self.handle_interrupt(mmu);
         } else if !self.halt {
@@ -1240,7 +1242,7 @@ impl CPU {
 
         // because EI is delayed, we don't have to return to the
         // instruction that we would have skipped otherwise
-        if self.last_instr == Instruction::EI {
+        if self.last_instr == Instruction::EI || self.last_instr == Instruction::HALT {
             self.push(mmu, self.reg.pc);
         } else {
             self.push(mmu, self.reg.pc - 1);
@@ -1255,19 +1257,19 @@ impl CPU {
         };
     }
 
-    pub fn fetch_instr(&mut self, mmu: &MMU) -> (Instruction, u8) {
+    pub fn fetch_instr(&mut self, mmu: &MMU) -> (Instruction, u8, bool) {
         let byte = self.get_imm8(mmu);
         match byte {
             0xCB => {
                 let cb_byte = self.get_imm8(mmu);
                 let instr = Instruction::decode_cb(cb_byte);
                 let clocks = CB_CLOCKS[cb_byte as usize];
-                (instr, clocks)
+                (instr, clocks, true)
             },
             _ => {
                 let instr = Instruction::decode(byte);
                 let clocks = CLOCKS[byte as usize];
-                (instr, clocks)
+                (instr, clocks, false)
             },
         }
     }

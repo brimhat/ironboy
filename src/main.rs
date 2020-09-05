@@ -40,7 +40,7 @@ const BUTTONS: [(Key, Button); 8] = [
 
 fn main() {
     let mut rom = Vec::<u8>::new();
-    let path = "roms/games/Dr. Mario (World).gb";
+    let path = "roms/games/Pokemon Red (UE) [S][!].gb";
     let mut file = match File::open(path) {
         Err(e) => panic!("{}", e),
         Ok(f) => f,

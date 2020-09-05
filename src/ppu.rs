@@ -84,7 +84,8 @@ impl From<u8> for Stat {
 
 impl From<Stat> for u8 {
     fn from(stat: Stat) -> u8 {
-        ((stat.enable_coincidence as u8) << 6)
+        (1 << 7) // bit 7 of stat is always 1
+        | ((stat.enable_coincidence as u8) << 6)
         | ((stat.enable_oam_seach as u8) << 5)
         | ((stat.enable_vblank as u8) << 4)
         | ((stat.enable_hblank as u8) << 3)
@@ -150,14 +151,14 @@ impl PPU {
         if self.mode_clock >= 456 {
             self.mode_clock %= 456;
             self.inc_ly(mmu);
-            if self.stat.enable_coincidence {
-                let lyc = mmu.rb(0xFF45);
-                if self.get_ly(mmu) == lyc {
-                    self.stat.coincidence = true;
+            let lyc = mmu.rb(0xFF45);
+            if self.get_ly(mmu) == lyc {
+                self.stat.coincidence = true;
+                if self.stat.enable_coincidence {
                     self.intr.borrow_mut().set_flag(IntFlag::Stat);
-                } else {
-                    self.stat.coincidence = false;
                 }
+            } else {
+                self.stat.coincidence = false;
             }
         }
 
@@ -181,7 +182,9 @@ impl PPU {
             if self.stat.mode != Mode::PixelTransfer {
                 self.stat.mode = Mode::PixelTransfer;
 
-                self.draw_bg(mmu);
+                if lcdc & 0b01 != 0 {
+                    self.draw_bg(mmu);
+                }
                 if lcdc & 0b10 != 0 {
                     self.draw_obj(mmu);
                 }
@@ -230,12 +233,12 @@ impl PPU {
         };
 
         for i in 0..SCREEN_W {
-            let mut x = (i as u8).wrapping_add(scx);
-
             let writing_win = (i as u8) >= wx && y_in_win;
-            if writing_win && x >= wx {
-                x -= wx;
-            }
+            let x = if writing_win {
+                (i as u8) - wx
+            } else {
+                (i as u8).wrapping_add(scx)
+            };
 
             let map_start = if writing_win {
                 if win_map0 { TILE_MAP0 } else { TILE_MAP1 }
@@ -334,7 +337,7 @@ impl PPU {
                     let bit2 = byte2 & mask != 0;
                     let pair = ((bit1 as u8) << 1) | bit2 as u8;
 
-                    if sprite_x.wrapping_add(7 - x) < (SCREEN_W as u8) && pair != 0b00 {
+                    if sprite_x.wrapping_add(x) < (SCREEN_W as u8) && pair != 0b00 {
                         let col = sprite_x.wrapping_add(x) as usize;
                         let sprite_has_priority = sprite_o & 0x80 == 0;
                         let bg_color0 = self.data[ly as usize][col] == LIGHTEST;
