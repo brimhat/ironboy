@@ -6,10 +6,14 @@ use std::cell::RefCell;
 pub const SCREEN_W: usize = 160;
 pub const SCREEN_H: usize = 144;
 
-const DARKEST: u32  = 0xFF0F380F;
-const DARK: u32     = 0xFF306230;
-const LIGHT: u32    = 0xFF8BAC0F;
-const LIGHTEST: u32 = 0xFF9BBC0F;
+//const DARKEST: u32  = 0xFF0F380F;
+//const DARK: u32     = 0xFF306230;
+//const LIGHT: u32    = 0xFF8BAC0F;
+//const LIGHTEST: u32 = 0xFF9BBC0F;
+const DARKEST: u32  = 0xFF000000;
+const DARK: u32     = 0xFF606060;
+const LIGHT: u32    = 0xFFC0C0C0;
+const LIGHTEST: u32 = 0xFFFFFFFF;
 
 const GREYS: [u32; 4] = [
     LIGHTEST,

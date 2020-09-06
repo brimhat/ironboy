@@ -2,6 +2,16 @@
 
 ironboy is a Game Boy emulator written in Rust.
 
+<p align="center">
+  <img src="data/tetris.gif">
+  <img src="data/super_mario_land.gif">
+</p>
+
+<p align="center">
+  <img src="data/kirbys_dream_land.gif">
+  <img src="data/pokemon_red.gif">
+</p>
+
 ironboy started as an educational project to solidify
 my knowledge of computer architecture and processors.
 Through the solidifying of those topics as well as the learning of
